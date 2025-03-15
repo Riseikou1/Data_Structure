@@ -1,82 +1,91 @@
 #include <iostream>
 #include <vector>
 #include <list>
+#include <string>
+#include <algorithm>
 
-class SimpleHashSet {
+class SimpleHashMap {
 private:
     int size;
-    std::vector<std::list<std::string>> buckets;
+    std::vector<std::list<std::pair<std::string, std::string>>> buckets;
 
-    int hashFunction(const std::string& value) {
-        int sum = 0;
-        for (char ch : value) {
-            sum += static_cast<int>(ch);
+    int hashFunction(const std::string& key) {
+        int numericSum = 0;
+        for (char ch : key) {
+            if (isdigit(ch)) {
+                numericSum += ch - '0';
+            }
         }
-        return sum % size;
+        return numericSum % size;
     }
 
 public:
-    SimpleHashSet(int size = 100) : size(size), buckets(size) {}
+    SimpleHashMap(int size = 10) : size(size), buckets(size) {}
 
-    void add(const std::string& value) {
-        int index = hashFunction(value);
-        std::list<std::string>& bucket = buckets[index];
+    void put(const std::string& key, const std::string& value) {
+        int index = hashFunction(key);
+        auto& bucket = buckets[index];
 
-        if (std::find(bucket.begin(), bucket.end(), value) == bucket.end()) {
-            bucket.push_back(value);
+        for (auto& pair : bucket) {
+            if (pair.first == key) {
+                pair.second = value; // Update existing key
+                return;
+            }
         }
+        bucket.emplace_back(key, value); // Add new key-value pair
     }
 
-    bool contains(const std::string& value) {
-        int index = hashFunction(value);
-        std::list<std::string>& bucket = buckets[index];
+    std::string get(const std::string& key) {
+        int index = hashFunction(key);
+        auto& bucket = buckets[index];
 
-        return std::find(bucket.begin(), bucket.end(), value) != bucket.end();
+        for (const auto& pair : bucket) {
+            if (pair.first == key) {
+                return pair.second;
+            }
+        }
+        return "Key not found";
     }
 
-    void remove(const std::string& value) {
-        int index = hashFunction(value);
-        std::list<std::string>& bucket = buckets[index];
+    void remove(const std::string& key) {
+        int index = hashFunction(key);
+        auto& bucket = buckets[index];
 
-        bucket.remove(value);
+        bucket.remove_if([&](const std::pair<std::string, std::string>& pair) {
+            return pair.first == key;
+        });
     }
 
-    void printSet() {
-        std::cout << "Hash Set Contents:\n";
+    void printMap() {
+        std::cout << "Hash Map Contents:" << std::endl;
         for (size_t i = 0; i < buckets.size(); i++) {
             std::cout << "Bucket " << i << " : ";
-            for (const std::string& item : buckets[i]) {
-                std::cout << item << " ";
+            for (const auto& pair : buckets[i]) {
+                std::cout << "(" << pair.first << ", " << pair.second << ") ";
             }
-            std::cout << "\n";
+            std::cout << std::endl;
         }
-    }
-
-    int getHashCode(const std::string& value) {
-        return hashFunction(value);
     }
 };
 
 int main() {
-    SimpleHashSet hashSet(10);
+    SimpleHashMap hashMap(10);
 
-    hashSet.add("Charlotte");
-    hashSet.add("Thomas");
-    hashSet.add("Jens");
-    hashSet.add("Peter");
-    hashSet.add("Lisa");
-    hashSet.add("Adele");
-    hashSet.add("Michaela");
-    hashSet.add("Bob");
+    hashMap.put("123-4567", "Charlotte");
+    hashMap.put("123-4568", "Thomas");
+    hashMap.put("123-4569", "Jens");
+    hashMap.put("123-4570", "Peter");
+    hashMap.put("123-4571", "Lisa");
+    hashMap.put("123-4572", "Adele");
+    hashMap.put("123-4573", "Michaela");
+    hashMap.put("123-4574", "Bob");
 
-    hashSet.printSet();
+    hashMap.printMap();
 
-    std::cout << "\n'Peter' is in the set: " << (hashSet.contains("Peter") ? "Yes" : "No") << "\n";
-    std::cout << "Removing 'Peter'\n";
-    hashSet.remove("Peter");
-
-    std::cout << "'Peter' is in the set: " << (hashSet.contains("Peter") ? "Yes" : "No") << "\n";
-    std::cout << "'Adele' has hash code: " << hashSet.getHashCode("Adele") << "\n";
+    std::cout << "\nName associated with '123-4570': " << hashMap.get("123-4570") << std::endl;
+    std::cout << "Updating the name for '123-4570' to 'Temuujin'\n";
+    hashMap.put("123-4570", "Temuujin");
+    std::cout << "Name associated with '123-4570': " << hashMap.get("123-4570") << std::endl;
 
     return 0;
 }
