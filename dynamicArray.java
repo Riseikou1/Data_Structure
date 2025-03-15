@@ -1,89 +1,78 @@
 #include <iostream>
+using namespace std;
 
 class Node {
 public:
     int data;
     Node* next;
-
     Node(int val) {
         data = val;
         next = nullptr;
     }
 };
 
-class LinkedList {
-public:
-    Node* head;
-
-    LinkedList() {
-        head = nullptr;
+void traverseAndPrint(Node* head) {
+    Node* current = head;
+    while (current) {
+        cout << current->data << " -> ";
+        current = current->next;
     }
+    cout << "null" << endl;
+}
 
-    // Insert a new node at the end
-    void insert(int val) {
-        Node* newNode = new Node(val);
-        if (!head) {
-            head = newNode;
-            return;
-        }
+void deleteNodeByValue(Node*& head, int value) {
+    if (!head) return;
+    if (head->data == value) {
         Node* temp = head;
-        while (temp->next) {
-            temp = temp->next;
-        }
-        temp->next = newNode;
+        head = head->next;
+        delete temp;
+        return;
     }
-
-    // Delete a specific node (O(n))
-    void deleteNode(Node* nodeToDelete) {
-        if (!head || !nodeToDelete) return;
-
-        // If the node to be deleted is the head
-        if (head == nodeToDelete) {
-            head = head->next;
-            delete nodeToDelete;
-            return;
-        }
-
-        Node* prev = head;
-        while (prev->next && prev->next != nodeToDelete) {
-            prev = prev->next;
-        }
-
-        if (prev->next) {
-            prev->next = nodeToDelete->next;
-            delete nodeToDelete;
-        }
+    Node* current = head;
+    while (current->next && current->next->data != value) {
+        current = current->next;
     }
+    if (!current->next) return;
+    Node* temp = current->next;
+    current->next = current->next->next;
+    delete temp;
+}
 
-    // Print the list
-    void printList() {
-        Node* temp = head;
-        while (temp) {
-            std::cout << temp->data << " -> ";
-            temp = temp->next;
-        }
-        std::cout << "NULL\n";
+void deleteNodeByPosition(Node*& head, int position) {
+    if (!head || position < 1) return;
+    Node* temp = head;
+    if (position == 1) {
+        head = head->next;
+        delete temp;
+        return;
     }
-};
+    Node* prev = head;
+    for (int i = 1; i < position - 1; i++) {
+        if (!prev->next) return;
+        prev = prev->next;
+    }
+    if (!prev->next) return;
+    temp = prev->next;
+    prev->next = temp->next;
+    delete temp;
+}
 
 int main() {
-    LinkedList list;
+    Node* head = new Node(7);
+    head->next = new Node(3);
+    head->next->next = new Node(2);
+    head->next->next->next = new Node(9);
 
-    // Insert elements
-    list.insert(1);
-    list.insert(2);
-    list.insert(3);
-    list.insert(4);
-    list.insert(5);
+    cout << "Original List: " << endl;
+    traverseAndPrint(head);
 
-    std::cout << "Original List: ";
-    list.printList();
+    deleteNodeByValue(head, 3);
+    cout << "After deleting value 3: " << endl;
+    traverseAndPrint(head);
 
-    // Delete a specific node
-    list.deleteNode(list.head->next->next);  // Delete node with value 3
-
-    std::cout << "After Deletion: ";
-    list.printList();
+    deleteNodeByPosition(head, 2);
+    cout << "After deleting node at position 2: " << endl;
+    traverseAndPrint(head);
 
     return 0;
 }
