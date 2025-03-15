@@ -1,78 +1,82 @@
 #include <iostream>
-using namespace std;
+#include <vector>
+#include <list>
 
-class Node {
+class SimpleHashSet {
+private:
+    int size;
+    std::vector<std::list<std::string>> buckets;
+
+    int hashFunction(const std::string& value) {
+        int sum = 0;
+        for (char ch : value) {
+            sum += static_cast<int>(ch);
+        }
+        return sum % size;
+    }
+
 public:
-    int data;
-    Node* next;
-    Node(int val) {
-        data = val;
-        next = nullptr;
+    SimpleHashSet(int size = 100) : size(size), buckets(size) {}
+
+    void add(const std::string& value) {
+        int index = hashFunction(value);
+        std::list<std::string>& bucket = buckets[index];
+
+        if (std::find(bucket.begin(), bucket.end(), value) == bucket.end()) {
+            bucket.push_back(value);
+        }
+    }
+
+    bool contains(const std::string& value) {
+        int index = hashFunction(value);
+        std::list<std::string>& bucket = buckets[index];
+
+        return std::find(bucket.begin(), bucket.end(), value) != bucket.end();
+    }
+
+    void remove(const std::string& value) {
+        int index = hashFunction(value);
+        std::list<std::string>& bucket = buckets[index];
+
+        bucket.remove(value);
+    }
+
+    void printSet() {
+        std::cout << "Hash Set Contents:\n";
+        for (size_t i = 0; i < buckets.size(); i++) {
+            std::cout << "Bucket " << i << " : ";
+            for (const std::string& item : buckets[i]) {
+                std::cout << item << " ";
+            }
+            std::cout << "\n";
+        }
+    }
+
+    int getHashCode(const std::string& value) {
+        return hashFunction(value);
     }
 };
 
-void traverseAndPrint(Node* head) {
-    Node* current = head;
-    while (current) {
-        cout << current->data << " -> ";
-        current = current->next;
-    }
-    cout << "null" << endl;
-}
-
-void deleteNodeByValue(Node*& head, int value) {
-    if (!head) return;
-    if (head->data == value) {
-        Node* temp = head;
-        head = head->next;
-        delete temp;
-        return;
-    }
-    Node* current = head;
-    while (current->next && current->next->data != value) {
-        current = current->next;
-    }
-    if (!current->next) return;
-    Node* temp = current->next;
-    current->next = current->next->next;
-    delete temp;
-}
-
-void deleteNodeByPosition(Node*& head, int position) {
-    if (!head || position < 1) return;
-    Node* temp = head;
-    if (position == 1) {
-        head = head->next;
-        delete temp;
-        return;
-    }
-    Node* prev = head;
-    for (int i = 1; i < position - 1; i++) {
-        if (!prev->next) return;
-        prev = prev->next;
-    }
-    if (!prev->next) return;
-    temp = prev->next;
-    prev->next = temp->next;
-    delete temp;
-}
-
 int main() {
-    Node* head = new Node(7);
-    head->next = new Node(3);
-    head->next->next = new Node(2);
-    head->next->next->next = new Node(9);
+    SimpleHashSet hashSet(10);
 
-    cout << "Original List: " << endl;
-    traverseAndPrint(head);
+    hashSet.add("Charlotte");
+    hashSet.add("Thomas");
+    hashSet.add("Jens");
+    hashSet.add("Peter");
+    hashSet.add("Lisa");
+    hashSet.add("Adele");
+    hashSet.add("Michaela");
+    hashSet.add("Bob");
 
-    deleteNodeByValue(head, 3);
-    cout << "After deleting value 3: " << endl;
-    traverseAndPrint(head);
+    hashSet.printSet();
 
-    deleteNodeByPosition(head, 2);
-    cout << "After deleting node at position 2: " << endl;
-    traverseAndPrint(head);
+    std::cout << "\n'Peter' is in the set: " << (hashSet.contains("Peter") ? "Yes" : "No") << "\n";
+    std::cout << "Removing 'Peter'\n";
+    hashSet.remove("Peter");
+
+    std::cout << "'Peter' is in the set: " << (hashSet.contains("Peter") ? "Yes" : "No") << "\n";
+    std::cout << "'Adele' has hash code: " << hashSet.getHashCode("Adele") << "\n";
 
     return 0;
 }
