@@ -1,26 +1,89 @@
-package Search;
-// interpolation search  =  improvement over binary search best used for "uniformly" distributed data
-//                          "guesses" where a value might be based on calculated probe results
-//                          if probe is incorrect,search area is narrowed,and a new probe is calculated.
-//                      average case : O(log(log(n)))
-//                      worst case :   O(n) [values increase exponentially]
-public class Interpolation_Search {
-    public static void main(String[] args) {
-        int[] array = {1,2,3,4,5,6,7,8,9};
-        int index = interpolationSearch(array,8);    
-        if(index !=-1 )    System.out.println("Element found at: "+index);
-        else     System.out.println("Element not found.");
+#include <iostream>
+
+class Node {
+public:
+    int data;
+    Node* next;
+
+    Node(int val) {
+        data = val;
+        next = nullptr;
     }
-    private static int interpolationSearch(int[] array,int value) {
-        int high = array.length-1;
-        int low = 0;
-        while(value>=array[low] && value<=array[high] && low<=high){
-            int probe = (high-low)*(value-array[low])/(array[high]-array[low]);
-            System.out.println("probe: "+ probe);
-            if(array[probe]==value)      return probe;  // zaaval curly bracket hiihgu,ingeed return hiichij bas boldog.
-            else if(array[probe]<value)  low = probe + 1;
-            else   high = probe -1;
+};
+
+class LinkedList {
+public:
+    Node* head;
+
+    LinkedList() {
+        head = nullptr;
+    }
+
+    // Insert a new node at the end
+    void insert(int val) {
+        Node* newNode = new Node(val);
+        if (!head) {
+            head = newNode;
+            return;
         }
-        return -1;
+        Node* temp = head;
+        while (temp->next) {
+            temp = temp->next;
+        }
+        temp->next = newNode;
     }
+
+    // Delete a specific node (O(n))
+    void deleteNode(Node* nodeToDelete) {
+        if (!head || !nodeToDelete) return;
+
+        // If the node to be deleted is the head
+        if (head == nodeToDelete) {
+            head = head->next;
+            delete nodeToDelete;
+            return;
+        }
+
+        Node* prev = head;
+        while (prev->next && prev->next != nodeToDelete) {
+            prev = prev->next;
+        }
+
+        if (prev->next) {
+            prev->next = nodeToDelete->next;
+            delete nodeToDelete;
+        }
+    }
+
+    // Print the list
+    void printList() {
+        Node* temp = head;
+        while (temp) {
+            std::cout << temp->data << " -> ";
+            temp = temp->next;
+        }
+        std::cout << "NULL\n";
+    }
+};
+
+int main() {
+    LinkedList list;
+
+    // Insert elements
+    list.insert(1);
+    list.insert(2);
+    list.insert(3);
+    list.insert(4);
+    list.insert(5);
+
+    std::cout << "Original List: ";
+    list.printList();
+
+    // Delete a specific node
+    list.deleteNode(list.head->next->next);  // Delete node with value 3
+
+    std::cout << "After Deletion: ";
+    list.printList();
+
+    return 0;
 }
