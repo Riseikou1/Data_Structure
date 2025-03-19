@@ -1,107 +1,60 @@
-class TreeNode:
-    def __init__(self, data):
-        self.data = data
-        self.left = None
-        self.right = None
-        self.height = 1
+class Graph:
+    def __init__(self, size):
+        self.adj_matrix = [[0] * size for _ in range(size)]
+        self.size = size
+        self.vertex_data = [''] * size  
 
-class AVLTree:
-    def getHeight(self, node):
-        return node.height if node else 0
+    def add_edge(self, u, v):
+        if 0 <= u < self.size and 0 <= v < self.size:
+            self.adj_matrix[u][v] = 1
+            self.adj_matrix[v][u] = 1
 
-    def getBalance(self, node):
-        return self.getHeight(node.left) - self.getHeight(node.right) if node else 0
+    def add_vertex_data(self, vertex, data):
+        if 0 <= vertex < self.size:
+            self.vertex_data[vertex] = data
 
-    def rightRotate(self, y):
-        x = y.left
-        T2 = x.right
+    def print_graph(self):
+        print("Adjacency Matrix:")
+        for row in self.adj_matrix:
+            print(' '.join(map(str, row)))
+        print("\nVertex Data:")
+        for vertex, data in enumerate(self.vertex_data):
+            print(f"Vertex {vertex}: {data}")
+            
+    def dfs_util(self, v, visited):
+        visited[v] = True
+        print(self.vertex_data[v], end=' ')
 
-        x.right = y
-        y.left = T2
+        for i in range(self.size):
+            if self.adj_matrix[v][i] == 1 and not visited[i]:
+                self.dfs_util(i, visited)
 
-        y.height = 1 + max(self.getHeight(y.left), self.getHeight(y.right))
-        x.height = 1 + max(self.getHeight(x.left), self.getHeight(x.right))
+    def dfs(self, start_vertex_data):
+        visited = [False] * self.size
+        start_vertex = self.vertex_data.index(start_vertex_data)
+        self.dfs_util(start_vertex, visited)
 
-        return x
+g = Graph(7)
 
-    def leftRotate(self, x):
-        y = x.right
-        T2 = y.left
+g.add_vertex_data(0, 'A')
+g.add_vertex_data(1, 'B')
+g.add_vertex_data(2, 'C')
+g.add_vertex_data(3, 'D')
+g.add_vertex_data(4, 'E')
+g.add_vertex_data(5, 'F')
+g.add_vertex_data(6, 'G')
 
-        y.left = x
-        x.right = T2
+g.add_edge(3, 0)  # D - A
+g.add_edge(0, 2)  # A - C
+g.add_edge(0, 3)  # A - D
+g.add_edge(0, 4)  # A - E
+g.add_edge(4, 2)  # E - C
+g.add_edge(2, 5)  # C - F
+g.add_edge(2, 1)  # C - B
+g.add_edge(2, 6)  # C - G
+g.add_edge(1, 5)  # B - F
 
-        x.height = 1 + max(self.getHeight(x.left), self.getHeight(x.right))
-        y.height = 1 + max(self.getHeight(y.left), self.getHeight(y.right))
+g.print_graph()
 
-        return y
-
-    def insert(self, node, data):
-        if not node:
-            return TreeNode(data)
-
-        if data < node.data:
-            node.left = self.insert(node.left, data)
-        elif data > node.data:
-            node.right = self.insert(node.right, data)
-        else:
-            return node  # Duplicate keys not allowed
-
-        node.height = 1 + max(self.getHeight(node.left), self.getHeight(node.right))
-        return self.balance(node)
-
-    def minValueNode(self, node):
-        while node.left:
-            node = node.left
-        return node
-
-    def delete(self, node, data):
-        if not node:
-            return node
-
-        if data < node.data:
-            node.left = self.delete(node.left, data)
-        elif data > node.data:
-            node.right = self.delete(node.right, data)
-        else:
-            if not node.left:
-                return node.right
-            elif not node.right:
-                return node.left
-
-            temp = self.minValueNode(node.right)
-            node.data = temp.data
-            node.right = self.delete(node.right, temp.data)
-
-        node.height = 1 + max(self.getHeight(node.left), self.getHeight(node.right))
-        return self.balance(node)
-
-    def balance(self, node):
-        balance = self.getBalance(node)
-
-        if balance > 1:
-            if self.getBalance(node.left) < 0:
-                node.left = self.leftRotate(node.left)
-            return self.rightRotate(node)
-        
-        if balance < -1:
-            if self.getBalance(node.right) > 0:
-                node.right = self.rightRotate(node.right)
-            return self.leftRotate(node)
-
-        return node
-
-    def inOrderTraversal(self, node):
-        if node:
-            self.inOrderTraversal(node.left)
-            print(node.data, end=" ")
-            self.inOrderTraversal(node.right)
-
-# Example usage
-tree = AVLTree()
-root = None
-
-for num in [10, 20, 30, 40, 50, 25]:
-    root = tree.insert(root, num)
-
-tree.inOrderTraversal(root)  # Output: 10 20 25 30 40 50
+print("\nDepth First Search starting from vertex D:")
+g.dfs('D')
