@@ -23,7 +23,6 @@ class Graph:
         distances = [float('inf')] * self.size  # Distances from start to all vertices
         predecessors = [None] * self.size  # Tracks the predecessors of each vertex
         distances[start_vertex] = 0  # Start vertex has distance 0
-        visited = [False] * self.size  # To track visited vertices
 
         # Min-heap to always fetch the vertex with the smallest distance
         min_heap = [(0, start_vertex)]  # Initial heap with start vertex distance
@@ -31,17 +30,14 @@ class Graph:
         while min_heap:
             current_dist, u = heapq.heappop(min_heap)
 
-            # Skip this vertex if it's already visited
-            if visited[u]:
+            # Skip if the popped node is already not optimal
+            if current_dist > distances[u]:
                 continue
-
-            # Mark vertex as visited
-            visited[u] = True
 
             # Update the distances to neighbors
             for v in range(self.size):
                 weight = self.adj_matrix[u][v]
-                if weight != 0 and not visited[v]:  # Only consider valid, unvisited neighbors
+                if weight != 0:  # Only consider valid, non-zero weight neighbors
                     alt = current_dist + weight
                     if alt < distances[v]:  # Found a shorter path to v
                         distances[v] = alt
@@ -53,6 +49,8 @@ class Graph:
                 break
 
         # Return the distance to the end vertex and the shortest path
+        if distances[end_vertex] == float('inf'):
+            return float('inf'), []  # No path exists
         return distances[end_vertex], self.get_path(predecessors, start_vertex_data, end_vertex_data)
 
     def get_path(self, predecessors, start_vertex_data, end_vertex_data):
@@ -76,14 +74,15 @@ class Graph:
         start_index = self.vertex_data.index(start_vertex_data)
         print(f"\nShortest paths from {start_vertex_data}:\n" + "-" * 40)
         for i in range(self.size):
+            if distances[i] == float('inf'):  # Skip printing disconnected nodes
+                continue
             path = []
             j = i
             while j is not None:
                 path.insert(0, self.vertex_data[j])
                 j = predecessors[j]
             path_str = " -> ".join(path)
-            dist_str = f"∞" if distances[i] == float('inf') else distances[i]
-            print(f"{start_vertex_data} to {self.vertex_data[i]}: {path_str} | Distance: {dist_str}")
+            print(f"{start_vertex_data} to {self.vertex_data[i]}: {path_str} | Distance: {distances[i]}")
 
 # Example Usage
 
@@ -111,4 +110,6 @@ distance, path = g.dijkstra('D', 'F')
 print(f"Shortest Path from D to F: {path}, Distance: {distance}")
 
 # Print all paths and distances from vertex 'D'
-g.print_paths('D', [float('inf')] * g.size, [None] * g.size)
+distances = [float('inf')] * g.size
+predecessors = [None] * g.size
+g.print_paths('D', distances, predecessors)
