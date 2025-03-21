@@ -1,53 +1,83 @@
+import heapq
+
 class Graph:
     def __init__(self, size):
         self.size = size
-        self.adj_list = [[] for _ in range(size)]  # Use adjacency list instead of matrix
-        self.parent = list(range(size))  # Union-Find parent array
-        self.rank = [0] * size  # Rank array for union by rank
+        self.adj_matrix = [[0]*size for _ in range(size)]
+        self.vertex_data = ['']*size
 
-    def add_edge(self, u, v):
+    def add_edge(self, u, v, weight, bidirectional=False):
         if 0 <= u < self.size and 0 <= v < self.size:
-            self.adj_list[u].append(v)
-            self.adj_list[v].append(u)
+            self.adj_matrix[u][v] = weight
+            if bidirectional:
+                self.adj_matrix[v][u] = weight  # for undirected graph
 
-    def find(self, i):
-        """Find root of i with path compression."""
-        if self.parent[i] != i:
-            self.parent[i] = self.find(self.parent[i])  # Path compression
-        return self.parent[i]
+    def add_vertex_data(self, vertex, data):
+        if 0 <= vertex < self.size:
+            self.vertex_data[vertex] = data
 
-    def union(self, x, y):
-        """Union by rank: attach smaller tree under larger tree."""
-        root_x = self.find(x)
-        root_y = self.find(y)
+    def dijkstra(self, start_vertex_data):
+        start = self.vertex_data.index(start_vertex_data)
+        distances = [float('inf')] * self.size
+        distances[start] = 0
+        previous = [None] * self.size
+        visited = [False] * self.size
 
-        if root_x != root_y:
-            if self.rank[root_x] > self.rank[root_y]:
-                self.parent[root_y] = root_x
-            elif self.rank[root_x] < self.rank[root_y]:
-                self.parent[root_x] = root_y
-            else:
-                self.parent[root_y] = root_x
-                self.rank[root_x] += 1  # Increase rank of new root
+        # Min-heap: (distance, vertex)
+        min_heap = [(0, start)]
 
-    def is_cyclic(self):
-        """Detect cycle using Union-Find (Disjoint Set)."""
-        for u in range(self.size):
-            for v in self.adj_list[u]:
-                if u < v:  # To avoid duplicate checks
-                    root_u = self.find(u)
-                    root_v = self.find(v)
-                    if root_u == root_v:
-                        return True  # Cycle detected
-                    self.union(root_u, root_v)
-        return False
+        while min_heap:
+            current_dist, u = heapq.heappop(min_heap)
 
+            if visited[u]:
+                continue
+            visited[u] = True
 
-# Example Usage
+            for v in range(self.size):
+                weight = self.adj_matrix[u][v]
+                if weight != 0 and not visited[v]:
+                    new_dist = current_dist + weight
+                    if new_dist < distances[v]:
+                        distances[v] = new_dist
+                        previous[v] = u
+                        heapq.heappush(min_heap, (new_dist, v))
+
+        return distances, previous
+
+    def print_paths(self, start_vertex_data, distances, previous):
+        start_index = self.vertex_data.index(start_vertex_data)
+        print(f"\nShortest paths from {start_vertex_data}:\n" + "-"*40)
+        for i in range(self.size):
+            path = []
+            j = i
+            while j is not None:
+                path.insert(0, self.vertex_data[j])
+                j = previous[j]
+            path_str = " -> ".join(path)
+            dist_str = f"∞" if distances[i] == float('inf') else distances[i]
+            print(f"{start_vertex_data} to {self.vertex_data[i]}: {path_str} | Distance: {dist_str}")
+
+# === Example Usage ===
+
 g = Graph(7)
 
-edges = [(1, 0), (0, 3), (0, 2), (2, 3), (3, 4), (3, 5), (3, 6), (4, 5)]
-for u, v in edges:
-    g.add_edge(u, v)
+# Add vertex labels
+labels = ['A', 'B', 'C', 'D', 'E', 'F', 'G']
+for i, label in enumerate(labels):
+    g.add_vertex_data(i, label)
 
-print("Graph has cycle:", g.is_cyclic())
+# Add directed edges
+g.add_edge(3, 0, 4)  # D -> A
+g.add_edge(3, 4, 2)  # D -> E
+g.add_edge(0, 2, 3)  # A -> C
+g.add_edge(0, 4, 4)  # A -> E
+g.add_edge(4, 2, 4)  # E -> C
+g.add_edge(4, 6, 5)  # E -> G
+g.add_edge(2, 5, 5)  # C -> F
+g.add_edge(2, 1, 2)  # C -> B
+g.add_edge(1, 5, 2)  # B -> F
+g.add_edge(6, 5, 5)  # G -> F
+
+# Run Dijkstra from vertex 'D'
+distances, previous = g.dijkstra('D')
+g.print_paths('D', distances, previous)
