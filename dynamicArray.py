@@ -51,13 +51,10 @@ class Graph:
         # Return the distance to the end vertex and the shortest path
         if distances[end_vertex] == float('inf'):
             return float('inf'), []  # No path exists
-        return distances[end_vertex], self.get_path(predecessors, start_vertex_data, end_vertex_data)
+        return distances[end_vertex], self.construct_path(predecessors, start_vertex, end_vertex)
 
-    def get_path(self, predecessors, start_vertex_data, end_vertex_data):
+    def construct_path(self, predecessors, start_vertex, end_vertex):
         # Backtrack to reconstruct the shortest path from end to start
-        start_vertex = self.vertex_data.index(start_vertex_data)
-        end_vertex = self.vertex_data.index(end_vertex_data)
-        
         path = []
         current = end_vertex
         while current is not None:
@@ -70,19 +67,14 @@ class Graph:
         else:
             return []  # No path found (disconnected graph)
 
-    def print_paths(self, start_vertex_data, distances, predecessors):
-        start_index = self.vertex_data.index(start_vertex_data)
-        print(f"\nShortest paths from {start_vertex_data}:\n" + "-" * 40)
-        for i in range(self.size):
-            if distances[i] == float('inf'):  # Skip printing disconnected nodes
-                continue
-            path = []
-            j = i
-            while j is not None:
-                path.insert(0, self.vertex_data[j])
-                j = predecessors[j]
+    def print_path_and_distance(self, start_vertex_data, end_vertex_data):
+        distance, path = self.dijkstra(start_vertex_data, end_vertex_data)
+
+        if distance == float('inf'):
+            print(f"No path from {start_vertex_data} to {end_vertex_data}")
+        else:
             path_str = " -> ".join(path)
-            print(f"{start_vertex_data} to {self.vertex_data[i]}: {path_str} | Distance: {distances[i]}")
+            print(f"Shortest Path from {start_vertex_data} to {end_vertex_data}: {path_str}, Distance: {distance}")
 
 # Example Usage
 
@@ -105,11 +97,5 @@ g.add_edge(2, 1, 2)  # C -> B
 g.add_edge(1, 5, 2)  # B -> F
 g.add_edge(6, 5, 5)  # G -> F
 
-# Run Dijkstra from vertex 'D' to 'F'
-distance, path = g.dijkstra('D', 'F')
-print(f"Shortest Path from D to F: {path}, Distance: {distance}")
-
-# Print all paths and distances from vertex 'D'
-distances = [float('inf')] * g.size
-predecessors = [None] * g.size
-g.print_paths('D', distances, predecessors)
+# Print shortest path and distance from 'D' to 'F'
+g.print_path_and_distance('D', 'F')
