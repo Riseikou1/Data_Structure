@@ -1,101 +1,86 @@
-import heapq
-
 class Graph:
     def __init__(self, size):
+        self.adj_matrix = [[0] * size for _ in range(size)]  # Initialize adjacency matrix
         self.size = size
-        self.adj_matrix = [[0] * size for _ in range(size)]  # Adjacency matrix
-        self.vertex_data = [''] * size  # Labels for vertices
+        self.vertex_data = [''] * size  # Vertex labels
 
-    def add_edge(self, u, v, weight, bidirectional=False):
+    def add_edge(self, u, v, weight):
         if 0 <= u < self.size and 0 <= v < self.size:
-            self.adj_matrix[u][v] = weight
-            if bidirectional:
-                self.adj_matrix[v][u] = weight  # Undirected graph: add reverse edge
+            self.adj_matrix[u][v] = weight  # Directed edge (no need for the reverse edge)
 
     def add_vertex_data(self, vertex, data):
         if 0 <= vertex < self.size:
             self.vertex_data[vertex] = data
 
-    def dijkstra(self, start_vertex_data, end_vertex_data):
+    def bellman_ford(self, start_vertex_data):
+        start_vertex = self.vertex_data.index(start_vertex_data)  # Start vertex index
+        distances = [float('inf')] * self.size  # Initialize distances as infinity
+        predecessors = [None] * self.size  # Predecessors to track paths
+        distances[start_vertex] = 0  # Distance to start vertex is 0
+
+        # Relax edges |V| - 1 times
+        for _ in range(self.size - 1):
+            for u in range(self.size):
+                for v in range(self.size):
+                    if self.adj_matrix[u][v] != 0:  # If there's an edge from u to v
+                        new_dist = distances[u] + self.adj_matrix[u][v]
+                        if new_dist < distances[v]:  # Relax the edge
+                            distances[v] = new_dist
+                            predecessors[v] = u
+
+        # Negative cycle detection (after all relaxations)
+        for u in range(self.size):
+            for v in range(self.size):
+                if self.adj_matrix[u][v] != 0 and distances[u] + self.adj_matrix[u][v] < distances[v]:
+                    return True, None, None  # Negative cycle detected
+
+        return False, distances, predecessors
+
+    def get_path(self, predecessors, start_vertex_data, end_vertex_data):
         start_vertex = self.vertex_data.index(start_vertex_data)
         end_vertex = self.vertex_data.index(end_vertex_data)
 
-        distances = [float('inf')] * self.size  # Distances from start to all vertices
-        predecessors = [None] * self.size  # Tracks the predecessors of each vertex
-        distances[start_vertex] = 0  # Start vertex has distance 0
-
-        # Min-heap to always fetch the vertex with the smallest distance
-        min_heap = [(0, start_vertex)]  # Initial heap with start vertex distance
-
-        while min_heap:
-            current_dist, u = heapq.heappop(min_heap)
-
-            # Skip if the popped node is already not optimal
-            if current_dist > distances[u]:
-                continue
-
-            # Update the distances to neighbors
-            for v in range(self.size):
-                weight = self.adj_matrix[u][v]
-                if weight != 0:  # Only consider valid, non-zero weight neighbors
-                    alt = current_dist + weight
-                    if alt < distances[v]:  # Found a shorter path to v
-                        distances[v] = alt
-                        predecessors[v] = u  # Update the predecessor of v
-                        heapq.heappush(min_heap, (alt, v))  # Push new path into the heap
-
-            # If we have reached the end vertex, break early
-            if u == end_vertex:
-                break
-
-        # Return the distance to the end vertex and the shortest path
-        if distances[end_vertex] == float('inf'):
-            return float('inf'), []  # No path exists
-        return distances[end_vertex], self.construct_path(predecessors, start_vertex, end_vertex)
-
-    def construct_path(self, predecessors, start_vertex, end_vertex):
-        # Backtrack to reconstruct the shortest path from end to start
         path = []
         current = end_vertex
         while current is not None:
-            path.insert(0, self.vertex_data[current])
+            path.insert(0, self.vertex_data[current])  # Insert at the beginning of the list
             current = predecessors[current]
-
-        # If the start and end vertices are the same
-        if path[0] == self.vertex_data[start_vertex]:
-            return path
-        else:
-            return []  # No path found (disconnected graph)
-
-    def print_path_and_distance(self, start_vertex_data, end_vertex_data):
-        distance, path = self.dijkstra(start_vertex_data, end_vertex_data)
-
-        if distance == float('inf'):
-            print(f"No path from {start_vertex_data} to {end_vertex_data}")
-        else:
-            path_str = " -> ".join(path)
-            print(f"Shortest Path from {start_vertex_data} to {end_vertex_data}: {path_str}, Distance: {distance}")
+            if current == start_vertex:  # Stop when we reach the start vertex
+                path.insert(0, self.vertex_data[start_vertex])
+                break
+        return '->'.join(path)  # Return the path as a string
 
 # Example Usage
+g = Graph(5)
 
-g = Graph(7)
+# Add vertices with labels
+g.add_vertex_data(0, 'A')
+g.add_vertex_data(1, 'B')
+g.add_vertex_data(2, 'C')
+g.add_vertex_data(3, 'D')
+g.add_vertex_data(4, 'E')
 
-# Add vertex labels
-labels = ['A', 'B', 'C', 'D', 'E', 'F', 'G']
-for i, label in enumerate(labels):
-    g.add_vertex_data(i, label)
+# Add directed edges with weights
+g.add_edge(3, 0, 4)  # D -> A, weight 4
+g.add_edge(3, 2, 7)  # D -> C, weight 7
+g.add_edge(3, 4, 3)  # D -> E, weight 3
+g.add_edge(0, 2, 4)  # A -> C, weight 4
+g.add_edge(2, 0, -3) # C -> A, weight -3
+g.add_edge(0, 4, 5)  # A -> E, weight 5
+g.add_edge(4, 2, 3)  # E -> C, weight 3
+g.add_edge(1, 2, -4) # B -> C, weight -4
+g.add_edge(4, 1, 2)  # E -> B, weight 2
 
-# Add directed edges
-g.add_edge(3, 0, 4)  # D -> A
-g.add_edge(3, 4, 2)  # D -> E
-g.add_edge(0, 2, 3)  # A -> C
-g.add_edge(0, 4, 4)  # A -> E
-g.add_edge(4, 2, 4)  # E -> C
-g.add_edge(4, 6, 5)  # E -> G
-g.add_edge(2, 5, 5)  # C -> F
-g.add_edge(2, 1, 2)  # C -> B
-g.add_edge(1, 5, 2)  # B -> F
-g.add_edge(6, 5, 5)  # G -> F
+# Running the Bellman-Ford algorithm from D to all vertices
+print("\nThe Bellman-Ford Algorithm starting from vertex D:")
+negative_cycle, distances, predecessors = g.bellman_ford('D')
 
-# Print shortest path and distance from 'D' to 'F'
-g.print_path_and_distance('D', 'F')
+if not negative_cycle:
+    for i, d in enumerate(distances):
+        if d != float('inf'):
+            path = g.get_path(predecessors, 'D', g.vertex_data[i])
+            print(f"Shortest path from D to {g.vertex_data[i]}: {path}, Distance: {d}")
+        else:
+            print(f"No path from D to {g.vertex_data[i]}, Distance: Infinity")
+else:
+    print("Negative weight cycle detected. Cannot compute shortest paths.")
