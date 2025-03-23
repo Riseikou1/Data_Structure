@@ -1,73 +1,76 @@
-class Graph:
-    def __init__(self, size):
+class Graph :
+    def __init__(self,size):
+        self.adj_matrix = [[0]*size for _ in range(size)]
         self.size = size
-        self.edges = []  # List of (u, v, weight)
-        self.vertex_data = [''] * size  # Human-readable vertex labels
+        self.vertex_data = ['']*size
 
-    def add_edge(self, u, v, weight):
-        if 0 <= u < self.size and 0 <= v < self.size:
-            self.edges.append((u, v, weight))
+    def add_edge(self,u,v,capacity):
+        self.adj_matrix[u][v] = capacity
 
-    def add_vertex_data(self, vertex, data):
-        if 0 <= vertex < self.size:
+    def add_vertex_data(self,vertex,data):
+        if 0<=vertex<self.size :
             self.vertex_data[vertex] = data
+    
+    def dfs(self,s,t,visited=None,path=None) :
+        if visited is None :
+            visited = [False]*self.size  # visited array to avoid revisiting the same vertices during the search for an augmented path.
+        if path is None :
+            path = []    # Vertices that belong to the augmented path are stored in the path array.
 
-    def find(self, parent, i):
-        # Path compression
-        if parent[i] != i:
-            parent[i] = self.find(parent, parent[i])
-        return parent[i]
+        visited[s] = True
+        path.append(s)
 
-    def union(self, parent, rank, x, y):
-        xroot = self.find(parent, x)
-        yroot = self.find(parent, y)
-        if rank[xroot] < rank[yroot]:
-            parent[xroot] = yroot
-        elif rank[xroot] > rank[yroot]:
-            parent[yroot] = xroot
-        else:
-            parent[yroot] = xroot
-            rank[xroot] += 1
+        if s == t :  # if current vertex is the sink node,we have found an augmented path from the source vertex to the sink vertex,so that path can be returned.
+            return path
+        
+        for ind, val in enumerate(self.adj_matrix[s]) :
+            if not visited[ind] and val > 0 :
+                result_path = self.dfs(ind,t,visited,path.copy())
+                if result_path :
+                    return result_path
+        
+        return None  # if no path is found.
+    
+    def fordFulkerson(self,source,sink) :
+        max_flow = 0
+        path = self.dfs(source,sink)
+        while path :
+            path_flow = float("inf")
+            for i in range(len(path)-1):
+                u,v = path[i] , path[i+1]
+                path_flow = min(path_flow,self.adj_matrix[u][v])
 
-    def kruskals_algorithm(self):
-        result = []  # Store MST edges
+            for i in range(len(path)-1) :
+                u,v = path[i] , path[i+1]
+                self.adj_matrix[u][v] -= path_flow
+                self.adj_matrix[v][u] += path_flow
+            
+            max_flow += path_flow
 
-        # Step 1: Sort edges by weight
-        self.edges.sort(key=lambda edge: edge[2])
+            path_names = [self.vertex_data[node] for node in path] 
+            print("Path:"," -> ".join(path_names), ", Flow :",path_flow)
 
-        # Step 2: Create disjoint sets
-        parent = list(range(self.size))
-        rank = [0] * self.size
+            path = self.dfs(source,sink)
 
-        for u, v, weight in self.edges:
-            root_u = self.find(parent, u)
-            root_v = self.find(parent, v)
+        return max_flow
+    
 
-            if root_u != root_v:
-                result.append((u, v, weight))
-                self.union(parent, rank, root_u, root_v)
+g = Graph(6)
+vertex_names = ['s', 'v1', 'v2', 'v3', 'v4', 't']
+for i, name in enumerate(vertex_names):
+    g.add_vertex_data(i, name)
 
-        # Print MST
-        print("Edge \tWeight")
-        for u, v, weight in result:
-            print(f"{self.vertex_data[u]}-{self.vertex_data[v]} \t{weight}")
+g.add_edge(0, 1, 3)  # s  -> v1, cap: 3
+g.add_edge(0, 2, 7)  # s  -> v2, cap: 7
+g.add_edge(1, 3, 3)  # v1 -> v3, cap: 3
+g.add_edge(1, 4, 4)  # v1 -> v4, cap: 4
+g.add_edge(2, 1, 5)  # v2 -> v1, cap: 5
+g.add_edge(2, 4, 3)  # v2 -> v4, cap: 3
+g.add_edge(3, 4, 3)  # v3 -> v4, cap: 3
+g.add_edge(3, 5, 2)  # v3 -> t,  cap: 2
+g.add_edge(4, 5, 6)  # v4 -> t,  cap: 6
 
-g = Graph(7)
-labels = ['A', 'B', 'C', 'D', 'E', 'F', 'G']
-for i, label in enumerate(labels):
-    g.add_vertex_data(i, label)
+source = 0; sink = 5
 
-g.add_edge(0, 1, 4)   # A-B
-g.add_edge(0, 6, 10)  # A-G
-g.add_edge(0, 2, 9)   # A-C
-g.add_edge(1, 2, 8)   # B-C
-g.add_edge(2, 3, 5)   # C-D
-g.add_edge(2, 4, 2)   # C-E
-g.add_edge(2, 6, 7)   # C-G
-g.add_edge(3, 4, 3)   # D-E
-g.add_edge(3, 5, 7)   # D-F
-g.add_edge(4, 6, 6)   # E-G
-g.add_edge(5, 6, 11)  # F-G
-
-print("Kruskal's Algorithm MST:")
-g.kruskals_algorithm()
+print("The maximum possible flow is %d " % g.fordFulkerson(source, sink))
+    
