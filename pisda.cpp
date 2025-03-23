@@ -1,125 +1,113 @@
 #include <iostream>
 #include <vector>
-#include <climits>
 #include <algorithm>
 
 using namespace std;
 
 class Graph {
     int size;
-    vector<vector<int>> adj_matrix;
-    vector<string> vertex_data;
+    vector<tuple<int, int, int>> edges;  // List of (u, v, weight)
+    vector<string> vertex_data;  // Human-readable vertex labels
 
 public:
-    Graph(int size) : size(size), adj_matrix(size, vector<int>(size, 0)), vertex_data(size, "") {}
+    Graph(int size) : size(size), vertex_data(size, "") {}
 
-    // Add an edge with a given capacity
-    void add_edge(int u, int v, int capacity) {
-        adj_matrix[u][v] = capacity;
+    void add_edge(int u, int v, int weight) {
+        if (0 <= u && u < size && 0 <= v && v < size) {
+            edges.push_back(make_tuple(u, v, weight));
+        }
     }
 
-    // Add vertex names
     void add_vertex_data(int vertex, const string& data) {
-        if (vertex >= 0 && vertex < size) {
+        if (0 <= vertex && vertex < size) {
             vertex_data[vertex] = data;
         }
     }
 
-    // DFS to find an augmenting path
-    bool dfs(int s, int t, vector<bool>& visited, vector<int>& path) {
-        visited[s] = true;
-        path.push_back(s);
-
-        if (s == t) {  // If we reached the sink, return the path
-            return true;
+    int find(vector<int>& parent, int i) {
+        // Path compression
+        if (parent[i] != i) {
+            parent[i] = find(parent, parent[i]);
         }
-
-        for (int ind = 0; ind < size; ++ind) {
-            if (!visited[ind] && adj_matrix[s][ind] > 0) {
-                if (dfs(ind, t, visited, path)) {
-                    return true;
-                }
-            }
-        }
-
-        path.pop_back();  // No path found, backtrack
-        return false;
+        return parent[i];
     }
 
-    // Ford-Fulkerson algorithm to find the maximum flow
-    int fordFulkerson(int source, int sink) {
-        int max_flow = 0;
-        vector<int> path;
-        
-        while (true) {
-            vector<bool> visited(size, false);
-            path.clear();
-            
-            if (!dfs(source, sink, visited, path)) {
-                break;  // No augmenting path found
-            }
+    void union_sets(vector<int>& parent, vector<int>& rank, int x, int y) {
+        int xroot = find(parent, x);
+        int yroot = find(parent, y);
 
-            // Find the maximum flow in the current path
-            int path_flow = INT_MAX;
-            for (int i = 0; i < path.size() - 1; ++i) {
-                int u = path[i];
-                int v = path[i + 1];
-                path_flow = min(path_flow, adj_matrix[u][v]);
-            }
+        if (rank[xroot] < rank[yroot]) {
+            parent[xroot] = yroot;
+        } else if (rank[xroot] > rank[yroot]) {
+            parent[yroot] = xroot;
+        } else {
+            parent[yroot] = xroot;
+            rank[xroot]++;
+        }
+    }
 
-            // Update the residual graph
-            for (int i = 0; i < path.size() - 1; ++i) {
-                int u = path[i];
-                int v = path[i + 1];
-                adj_matrix[u][v] -= path_flow;
-                adj_matrix[v][u] += path_flow;
-            }
+    void kruskals_algorithm() {
+        vector<tuple<int, int, int>> result;  // Store MST edges
 
-            max_flow += path_flow;
+        // Step 1: Sort edges by weight
+        sort(edges.begin(), edges.end(), [](const tuple<int, int, int>& a, const tuple<int, int, int>& b) {
+            return get<2>(a) < get<2>(b);
+        });
 
-            // Print the path and the flow
-            vector<string> path_names;
-            for (int node : path) {
-                path_names.push_back(vertex_data[node]);
-            }
-            cout << "Path: ";
-            for (size_t i = 0; i < path_names.size(); ++i) {
-                cout << path_names[i];
-                if (i != path_names.size() - 1) {
-                    cout << " -> ";
-                }
-            }
-            cout << " , Flow: " << path_flow << endl;
+        // Step 2: Create disjoint sets
+        vector<int> parent(size);
+        vector<int> rank(size, 0);
+        for (int i = 0; i < size; ++i) {
+            parent[i] = i;
         }
 
-        return max_flow;
+        for (const auto& edge : edges) {
+            int u = get<0>(edge);
+            int v = get<1>(edge);
+            int weight = get<2>(edge);
+
+            int root_u = find(parent, u);
+            int root_v = find(parent, v);
+
+            if (root_u != root_v) {
+                result.push_back(edge);
+                union_sets(parent, rank, root_u, root_v);
+            }
+        }
+
+        // Print MST
+        cout << "Edge\tWeight\n";
+        for (const auto& edge : result) {
+            int u = get<0>(edge);
+            int v = get<1>(edge);
+            int weight = get<2>(edge);
+            cout << vertex_data[u] << "-" << vertex_data[v] << " \t " << weight << endl;
+        }
     }
 };
 
 int main() {
-    Graph g(6);
-    vector<string> vertex_names = {"s", "v1", "v2", "v3", "v4", "t"};
-    
-    for (int i = 0; i < 6; ++i) {
-        g.add_vertex_data(i, vertex_names[i]);
+    Graph g(7);
+    vector<string> labels = {"A", "B", "C", "D", "E", "F", "G"};
+    for (int i = 0; i < labels.size(); ++i) {
+        g.add_vertex_data(i, labels[i]);
     }
 
-    // Add edges with capacities
-    g.add_edge(0, 1, 3);  // s  -> v1, cap: 3
-    g.add_edge(0, 2, 7);  // s  -> v2, cap: 7
-    g.add_edge(1, 3, 3);  // v1 -> v3, cap: 3
-    g.add_edge(1, 4, 4);  // v1 -> v4, cap: 4
-    g.add_edge(2, 1, 5);  // v2 -> v1, cap: 5
-    g.add_edge(2, 4, 3);  // v2 -> v4, cap: 3
-    g.add_edge(3, 4, 3);  // v3 -> v4, cap: 3
-    g.add_edge(3, 5, 2);  // v3 -> t,  cap: 2
-    g.add_edge(4, 5, 6);  // v4 -> t,  cap: 6
+    g.add_edge(0, 1, 4);   // A-B
+    g.add_edge(0, 6, 10);  // A-G
+    g.add_edge(0, 2, 9);   // A-C
+    g.add_edge(1, 2, 8);   // B-C
+    g.add_edge(2, 3, 5);   // C-D
+    g.add_edge(2, 4, 2);   // C-E
+    g.add_edge(2, 6, 7);   // C-G
+    g.add_edge(3, 4, 3);   // D-E
+    g.add_edge(3, 5, 7);   // D-F
+    g.add_edge(4, 6, 6);   // E-G
+    g.add_edge(5, 6, 11);  // F-G
 
-    // Source and Sink
-    int source = 0, sink = 5;
+    cout << string(44, '*') << "\nKruskal's Algorithm - Minimum Spanning Tree:\n" << string(44, '*') << endl;
 
-    // Calculate and output the maximum flow
-    cout << "The maximum possible flow is " << g.fordFulkerson(source, sink) << endl;
+    g.kruskals_algorithm();
 
     return 0;
 }
