@@ -1,8 +1,7 @@
 #include <iostream>
 #include <vector>
-#include <queue>
-#include <climits>  // For INT_MAX
-#include <algorithm> // For reverse
+#include <climits>
+#include <algorithm>
 
 using namespace std;
 
@@ -12,110 +11,115 @@ class Graph {
     vector<string> vertex_data;
 
 public:
-    Graph(int n) : size(n), adj_matrix(n, vector<int>(n, 0)), vertex_data(n, "") {}
+    Graph(int size) : size(size), adj_matrix(size, vector<int>(size, 0)), vertex_data(size, "") {}
 
+    // Add an edge with a given capacity
     void add_edge(int u, int v, int capacity) {
         adj_matrix[u][v] = capacity;
     }
 
+    // Add vertex names
     void add_vertex_data(int vertex, const string& data) {
         if (vertex >= 0 && vertex < size) {
             vertex_data[vertex] = data;
         }
     }
 
-    bool bfs(int source, int sink, vector<int>& parent) {
-        vector<bool> visited(size, false);
-        queue<int> q;
+    // DFS to find an augmenting path
+    bool dfs(int s, int t, vector<bool>& visited, vector<int>& path) {
+        visited[s] = true;
+        path.push_back(s);
 
-        q.push(source);
-        visited[source] = true;
-        parent[source] = -1;
+        if (s == t) {  // If we reached the sink, return the path
+            return true;
+        }
 
-        while (!q.empty()) {
-            int u = q.front();
-            q.pop();
-
-            for (int v = 0; v < size; ++v) {
-                if (!visited[v] && adj_matrix[u][v] > 0) {
-                    q.push(v);
-                    parent[v] = u;
-                    visited[v] = true;
-
-                    if (v == sink)
-                        return true;
+        for (int ind = 0; ind < size; ++ind) {
+            if (!visited[ind] && adj_matrix[s][ind] > 0) {
+                if (dfs(ind, t, visited, path)) {
+                    return true;
                 }
             }
         }
 
+        path.pop_back();  // No path found, backtrack
         return false;
     }
 
-    int edmonds_karp(int source, int sink) {
-        vector<int> parent(size);
+    // Ford-Fulkerson algorithm to find the maximum flow
+    int fordFulkerson(int source, int sink) {
         int max_flow = 0;
+        vector<int> path;
+        
+        while (true) {
+            vector<bool> visited(size, false);
+            path.clear();
+            
+            if (!dfs(source, sink, visited, path)) {
+                break;  // No augmenting path found
+            }
 
-        cout << string(45, '*') << endl;
-        cout << "Augmenting Paths Found:\n";
-
-        while (bfs(source, sink, parent)) {
+            // Find the maximum flow in the current path
             int path_flow = INT_MAX;
-
-            // Find minimum residual capacity in the path
-            for (int v = sink; v != source; v = parent[v]) {
-                int u = parent[v];
+            for (int i = 0; i < path.size() - 1; ++i) {
+                int u = path[i];
+                int v = path[i + 1];
                 path_flow = min(path_flow, adj_matrix[u][v]);
             }
 
-            // Update residual capacities
-            for (int v = sink; v != source; v = parent[v]) {
-                int u = parent[v];
+            // Update the residual graph
+            for (int i = 0; i < path.size() - 1; ++i) {
+                int u = path[i];
+                int v = path[i + 1];
                 adj_matrix[u][v] -= path_flow;
                 adj_matrix[v][u] += path_flow;
             }
 
             max_flow += path_flow;
 
-            // Print the path
-            vector<string> path;
-            for (int v = sink; v != -1; v = parent[v])
-                path.push_back(vertex_data[v]);
-
-            reverse(path.begin(), path.end());
-
-            cout << "Path : ";
-            for (size_t i = 0; i < path.size(); ++i) {
-                cout << path[i];
-                if (i != path.size() - 1)
-                    cout << " -> ";
+            // Print the path and the flow
+            vector<string> path_names;
+            for (int node : path) {
+                path_names.push_back(vertex_data[node]);
             }
-            cout << "  || Flow : " << path_flow << endl;
+            cout << "Path: ";
+            for (size_t i = 0; i < path_names.size(); ++i) {
+                cout << path_names[i];
+                if (i != path_names.size() - 1) {
+                    cout << " -> ";
+                }
+            }
+            cout << " , Flow: " << path_flow << endl;
         }
 
-        cout << string(45, '*') << endl;
         return max_flow;
     }
 };
 
 int main() {
     Graph g(6);
-    vector<string> names = {"s", "v1", "v2", "v3", "v4", "t"};
-    for (int i = 0; i < 6; ++i)
-        g.add_vertex_data(i, names[i]);
+    vector<string> vertex_names = {"s", "v1", "v2", "v3", "v4", "t"};
+    
+    for (int i = 0; i < 6; ++i) {
+        g.add_vertex_data(i, vertex_names[i]);
+    }
 
-    g.add_edge(0, 1, 3);  // s -> v1
-    g.add_edge(0, 2, 7);  // s -> v2
-    g.add_edge(1, 3, 3);  // v1 -> v3
-    g.add_edge(1, 4, 4);  // v1 -> v4
-    g.add_edge(2, 1, 5);  // v2 -> v1
-    g.add_edge(2, 4, 3);  // v2 -> v4
-    g.add_edge(3, 4, 3);  // v3 -> v4
-    g.add_edge(3, 5, 2);  // v3 -> t
-    g.add_edge(4, 5, 6);  // v4 -> t
+    // Add edges with capacities
+    g.add_edge(0, 1, 3);  // s  -> v1, cap: 3
+    g.add_edge(0, 2, 7);  // s  -> v2, cap: 7
+    g.add_edge(1, 3, 3);  // v1 -> v3, cap: 3
+    g.add_edge(1, 4, 4);  // v1 -> v4, cap: 4
+    g.add_edge(2, 1, 5);  // v2 -> v1, cap: 5
+    g.add_edge(2, 4, 3);  // v2 -> v4, cap: 3
+    g.add_edge(3, 4, 3);  // v3 -> v4, cap: 3
+    g.add_edge(3, 5, 2);  // v3 -> t,  cap: 2
+    g.add_edge(4, 5, 6);  // v4 -> t,  cap: 6
 
-    int max_flow = g.edmonds_karp(0, 5);  // s to t
-    cout << "The maximum possible flow is: " << max_flow << endl;
-    cout << string(45, '*') << endl;
+    // Source and Sink
+    int source = 0, sink = 5;
+
+    // Calculate and output the maximum flow
+    cout << "The maximum possible flow is " << g.fordFulkerson(source, sink) << endl;
 
     return 0;
 }
