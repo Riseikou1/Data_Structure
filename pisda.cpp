@@ -1,118 +1,113 @@
 #include <iostream>
 #include <vector>
-#include <queue>
-#include <string>
-#include <limits>
 #include <algorithm>
 
 using namespace std;
 
 class Graph {
-private:
     int size;
-    vector<vector<int>> adj_matrix;
-    vector<string> vertex_data;
+    vector<tuple<int, int, int>> edges;  // List of (u, v, weight)
+    vector<string> vertex_data;  // Human-readable vertex labels
 
 public:
-    Graph(int n) : size(n), adj_matrix(n, vector<int>(n, 0)), vertex_data(n, "") {}
+    Graph(int size) : size(size), vertex_data(size, "") {}
+
+    void add_edge(int u, int v, int weight) {
+        if (0 <= u && u < size && 0 <= v && v < size) {
+            edges.push_back(make_tuple(u, v, weight));
+        }
+    }
 
     void add_vertex_data(int vertex, const string& data) {
-        if (vertex >= 0 && vertex < size)
+        if (0 <= vertex && vertex < size) {
             vertex_data[vertex] = data;
-    }
-
-    void add_edge(int u, int v, int weight, bool bidirectional = false) {
-        if (u >= 0 && u < size && v >= 0 && v < size) {
-            adj_matrix[u][v] = weight;
-            if (bidirectional)
-                adj_matrix[v][u] = weight;
         }
     }
 
-    void dijkstra(const string& start_vertex_data, vector<int>& distances, vector<int>& previous) {
-        int start = find(vertex_data.begin(), vertex_data.end(), start_vertex_data) - vertex_data.begin();
+    int find(vector<int>& parent, int i) {
+        // Path compression
+        if (parent[i] != i) {
+            parent[i] = find(parent, parent[i]);
+        }
+        return parent[i];
+    }
 
-        distances.assign(size, numeric_limits<int>::max());
-        previous.assign(size, -1);
-        vector<bool> visited(size, false);
-        distances[start] = 0;
+    void union_sets(vector<int>& parent, vector<int>& rank, int x, int y) {
+        int xroot = find(parent, x);
+        int yroot = find(parent, y);
 
-        // Min-heap using pair: (distance, vertex)
-        priority_queue<pair<int, int>, vector<pair<int, int>>, greater<>> min_heap;
-        min_heap.push({0, start});
-
-        while (!min_heap.empty()) {
-            auto [current_dist, u] = min_heap.top();
-            min_heap.pop();
-
-            if (visited[u]) continue;
-            visited[u] = true;
-
-            for (int v = 0; v < size; ++v) {
-                int weight = adj_matrix[u][v];
-                if (weight != 0 && !visited[v]) {
-                    int new_dist = current_dist + weight;
-                    if (new_dist < distances[v]) {
-                        distances[v] = new_dist;
-                        previous[v] = u;
-                        min_heap.push({new_dist, v});
-                    }
-                }
-            }
+        if (rank[xroot] < rank[yroot]) {
+            parent[xroot] = yroot;
+        } else if (rank[xroot] > rank[yroot]) {
+            parent[yroot] = xroot;
+        } else {
+            parent[yroot] = xroot;
+            rank[xroot]++;
         }
     }
 
-    void print_paths(const string& start_vertex_data, const vector<int>& distances, const vector<int>& previous) {
+    void kruskals_algorithm() {
+        vector<tuple<int, int, int>> result;  // Store MST edges
 
-        cout << "\nShortest paths from " << start_vertex_data << ":\n";
-        cout << "----------------------------------------\n";
+        // Step 1: Sort edges by weight
+        sort(edges.begin(), edges.end(), [](const tuple<int, int, int>& a, const tuple<int, int, int>& b) {
+            return get<2>(a) < get<2>(b);
+        });
 
+        // Step 2: Create disjoint sets
+        vector<int> parent(size);
+        vector<int> rank(size, 0);
         for (int i = 0; i < size; ++i) {
-            vector<string> path;
-            int j = i;
-            while (j != -1) {
-                path.push_back(vertex_data[j]);
-                j = previous[j];
-            }
-            reverse(path.begin(), path.end());
+            parent[i] = i;
+        }
 
-            cout << start_vertex_data << " to " << vertex_data[i] << ": ";
-            for (size_t k = 0; k < path.size(); ++k) {
-                cout << path[k];
-                if (k != path.size() - 1)
-                    cout << " -> ";
-            }
+        for (const auto& edge : edges) {
+            int u = get<0>(edge);
+            int v = get<1>(edge);
+            int weight = get<2>(edge);
 
-            if (distances[i] == numeric_limits<int>::max())
-                cout << " | Distance: ∞" << endl;
-            else
-                cout << " | Distance: " << distances[i] << endl;
+            int root_u = find(parent, u);
+            int root_v = find(parent, v);
+
+            if (root_u != root_v) {
+                result.push_back(edge);
+                union_sets(parent, rank, root_u, root_v);
+            }
+        }
+
+        // Print MST
+        cout << "Edge\tWeight\n";
+        for (const auto& edge : result) {
+            int u = get<0>(edge);
+            int v = get<1>(edge);
+            int weight = get<2>(edge);
+            cout << vertex_data[u] << "-" << vertex_data[v] << " \t " << weight << endl;
         }
     }
 };
 
-// === Main Function ===
-
 int main() {
     Graph g(7);
     vector<string> labels = {"A", "B", "C", "D", "E", "F", "G"};
-    for (int i = 0; i < labels.size(); ++i)
+    for (int i = 0; i < labels.size(); ++i) {
         g.add_vertex_data(i, labels[i]);
+    }
 
-    g.add_edge(3, 0, 4); // D -> A
-    g.add_edge(3, 4, 2); // D -> E
-    g.add_edge(0, 2, 3); // A -> C
-    g.add_edge(0, 4, 4); // A -> E
-    g.add_edge(4, 2, 4); // E -> C
-    g.add_edge(4, 6, 5); // E -> G
-    g.add_edge(2, 5, 5); // C -> F
-    g.add_edge(2, 1, 2); // C -> B
-    g.add_edge(1, 5, 2); // B -> F
-    g.add_edge(6, 5, 5); // G -> F
+    g.add_edge(0, 1, 4);   // A-B
+    g.add_edge(0, 6, 10);  // A-G
+    g.add_edge(0, 2, 9);   // A-C
+    g.add_edge(1, 2, 8);   // B-C
+    g.add_edge(2, 3, 5);   // C-D
+    g.add_edge(2, 4, 2);   // C-E
+    g.add_edge(2, 6, 7);   // C-G
+    g.add_edge(3, 4, 3);   // D-E
+    g.add_edge(3, 5, 7);   // D-F
+    g.add_edge(4, 6, 6);   // E-G
+    g.add_edge(5, 6, 11);  // F-G
 
-    vector<int> distances, previous;
-    g.dijkstra("D", distances, previous);
-    g.print_paths("D", distances, previous);
+    cout << string(44, '*') << "\nKruskal's Algorithm - Minimum Spanning Tree:\n" << string(44, '*') << endl;
+
+    g.kruskals_algorithm();
 
     return 0;
 }
