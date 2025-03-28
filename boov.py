@@ -1,113 +1,78 @@
-class TreeNode:
-    def __init__(self, data):
-        self.data = data
-        self.left = None
-        self.right = None
-        self.height = 1
+class Poly:
+    def __init__(self, capacity=10):
+        self.degree = 0
+        self.coef = [0] * capacity if capacity else []
 
-class AVLTree:
-    def getHeight(self, node):
-        return node.height if node else 0
-
-    def getBalance(self, node):
-        return self.getHeight(node.left) - self.getHeight(node.right) if node else 0
-
-    def rightRotate(self, y):
-        print('Rotate right on node',y.data)
-        x = y.left  # Assign left child of y to x(head node)
-        T2 = x.right  # Store x's right child
-
-        x.right = y  # Make y the right child of x(head node=x)
-        y.left = T2 # Move T2 to be y's left child.
-
-        y.height = 1 + max(self.getHeight(y.left), self.getHeight(y.right))
-        x.height = 1 + max(self.getHeight(x.left), self.getHeight(x.right))
-
-        return x
-
-    def leftRotate(self, x):
-        print('Rotate left on node ',x.data)
-        y = x.right
-        T2 = y.left
-
-        y.left = x
-        x.right = T2
-
-        x.height = 1 + max(self.getHeight(x.left), self.getHeight(x.right))
-        y.height = 1 + max(self.getHeight(y.left), self.getHeight(y.right))
-
-        return y
-
-    def insert(self, node, data):
-        if not node:
-            return TreeNode(data)
-
-        if data < node.data:
-            node.left = self.insert(node.left, data)
-        elif data > node.data:
-            node.right = self.insert(node.right, data)
-        else:
-            return node  # Duplicate keys not allowed
-
-        node.height = 1 + max(self.getHeight(node.left), self.getHeight(node.right))
-
-        return self.balance(node)  # Always balance the tree after inserting or deleting nodes.
-
-    def minValueNode(self, node):
-        while node.left:
-            node = node.left
-        return node
-
-    def delete(self, node, data):
-        if not node:
-            return node
-
-        if data < node.data:
-            node.left = self.delete(node.left, data)
-        elif data > node.data:
-            node.right = self.delete(node.right, data)
-        else:
-             # Node with only one child or no child
-            if not node.left:
-                return node.right
-            elif not node.right:
-                return node.left
-
-            # Node with two children : Get the inorder successor (Different from BST. there is no need to find predecessor blah2. for stable and less balancing operations.)
-            temp = self.minValueNode(node.right)
-            node.data = temp.data
-            node.right = self.delete(node.right, temp.data)
-
-        node.height = 1 + max(self.getHeight(node.left), self.getHeight(node.right))
-
-        return self.balance(node)   # Always balance the tree after inserting or deleting nodes.
-
-    def balance(self, node):
-        balance = self.getBalance(node)  # Get the balance factor
-
-        if balance > 1:  #
-            if self.getBalance(node.left) < 0:   # Left-Right weighted case
-                node.left = self.leftRotate(node.left)
-            return self.rightRotate(node)  # left-left case
+    def readPoly(self):
+        self.degree = int(input("Input polynomial degree: "))
+        for i in range(self.degree, -1, -1):
+            c = int(input("%d차 항의 계수: " %i))
+            self.coef[i] = c
         
-        if balance < -1:
-            if self.getBalance(node.right) > 0:  # right-left case.
-                node.right = self.rightRotate(node.right)
-            return self.leftRotate(node)   #  right-right case
+    def printPoly(self):
+        strr = ""
+        for i in range(self.degree, 0, -1):
+            coef = self.coef[i]
+            if coef != 0:
+                sign = " + " if coef > 0 and strr else (" - " if coef < 0 and strr else ("-" if coef < 0 else ""))
+                abs_coef = abs(coef)
+                if i == 1:
+                    strr += f"{sign}{abs_coef}x"
+                else:
+                    strr += f"{sign}{abs_coef}x^{i}"
 
-        return node
+        if self.coef[0] != 0:
+            sign = " + " if self.coef[0] > 0 and strr else (" - " if self.coef[0] < 0 and strr else ("-" if self.coef[0] < 0 else ""))
+            strr += f"{sign}{abs(self.coef[0])}"
 
-    def inOrderTraversal(self, node):
-        if node:
-            self.inOrderTraversal(node.left)
-            print(node.data, end=" ")
-            self.inOrderTraversal(node.right)
+        print(strr)
 
-# Example usage
-tree = AVLTree()
-root = None
 
-for num in [10, 20, 30, 40, 50, 25]:
-    root = tree.insert(root, num)
+    def add(self):
+        second = Poly()
+        second.readPoly()
 
-tree.inOrderTraversal(root)  # Output: 10 20 25 30 40 50
+        max_deg = self.degree if self.degree > second.degree else second.degree
+
+        a_coef = self.coef + [0] * (max_deg - self.degree)
+        b_coef = second.coef + [0] * (max_deg - second.degree)
+
+        result_coef = [a_coef[i] + b_coef[i] for i in range(max_deg + 1)]
+
+        print("Sum of Polynomials:")
+
+        strr = ""
+        for i in range(len(result_coef)-1, 0, -1):
+            coef = result_coef[i]
+            if coef != 0:
+                sign = " + " if coef > 0 and strr else (" - " if coef < 0 and strr else ("-" if coef < 0 else ""))
+                abs_coef = abs(coef)
+                if i == 1:
+                    strr += f"{sign}{abs_coef}x"
+                else:
+                    strr += f"{sign}{abs_coef}x^{i}"
+
+        if result_coef[0] != 0:
+            sign = " + " if result_coef[0] > 0 and strr else (" - " if result_coef[0] < 0 and strr else ("-" if result_coef[0] < 0 else ""))
+            strr += f"{sign}{abs(result_coef[0])}"
+
+        print(strr)
+
+    def eval(self):
+        b = 0
+        value = int(input("Please enter x value:\n"))
+        for i in range(self.degree,0,-1):
+            b += (value**i)*self.coef[i]
+        return b + self.coef[0]
+
+
+if __name__ == "__main__":
+    a = Poly()
+    a.readPoly()
+    a.printPoly()
+    result = a.eval()
+    print(f"Result of evaluation: {result}\n")
+
+    print("Adding to 2 polynomials\n")
+
+    a.add()
