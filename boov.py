@@ -1,87 +1,74 @@
-from collections import deque
-
-class Graph :
-    def __init__(self,size):
+class Graph:
+    def __init__(self, size):
         self.size = size
-        self.adj_matrix = [[0]*size for _ in range(size)]
-        self.vertex_data = ['']*size
+        self.edges = []  # List of (u, v, weight)
+        self.vertex_data = [''] * size  # Human-readable vertex labels
 
-    def add_edge(self,u,v,capacity):
-        self.adj_matrix[u][v] = capacity
+    def add_edge(self, u, v, weight):
+        if 0 <= u < self.size and 0 <= v < self.size:
+            self.edges.append((u, v, weight))
 
-    def add_vertex_data(self,vertex,data):
-        if 0<=vertex<self.size :
+    def add_vertex_data(self, vertex, data):
+        if 0 <= vertex < self.size:
             self.vertex_data[vertex] = data
 
-    def bfs(self,source,sink,parent):
-        visited = [False]*self.size
-        queue = deque([source])
-        visited[source] = True
-        parent[source] = -1
+    def find(self, parent, i):
+        # Path compression
+        if parent[i] != i:
+            parent[i] = self.find(parent, parent[i])
+        return parent[i]
 
-        while queue :
-            u = queue.popleft()
-            for v,capacity in enumerate(self.adj_matrix[u]) :
-                if not visited[v] and capacity > 0 :
-                    parent[v] = u
-                    visited[v] = True
-                    queue.append(v)
-                    if v == sink :
-                        return True
-        return False
-    
-    def edmonds_karp(self,source,sink):
-        parent = [-1]*self.size
-        max_flow = 0
+    def union(self, parent, rank, x, y):
+        xroot = self.find(parent, x)
+        yroot = self.find(parent, y)
+        if rank[xroot] < rank[yroot]:
+            parent[xroot] = yroot
+        elif rank[xroot] > rank[yroot]:
+            parent[yroot] = xroot
+        else:
+            parent[yroot] = xroot
+            rank[xroot] += 1
 
-        print("*"*45)
-        print("Augmenting Paths Found: ")
+    def kruskals_algorithm(self):
+        result = []  # Store MST edges
 
-        while self.bfs(source,sink,parent):
-            path_flow = float("inf")
-            v = sink
+        # Step 1: Sort edges by weight
+        self.edges.sort(key=lambda edge: edge[2])
 
-            while v != source :
-                u = parent[v]
-                path_flow = min(path_flow,self.adj_matrix[u][v])
-                v = u
+        # Step 2: Create disjoint sets
+        parent = list(range(self.size))
+        rank = [0] * self.size
 
-            v = sink
-            while v != source :
-                u = parent[v]
-                self.adj_matrix[u][v] -= path_flow
-                self.adj_matrix[v][u] += path_flow
-                v = u
+        for u, v, weight in self.edges:
+            root_u = self.find(parent, u)
+            root_v = self.find(parent, v)
 
-            max_flow += path_flow
+            if root_u != root_v:
+                result.append((u, v, weight))
+                self.union(parent, rank, root_u, root_v)
 
-            path = []
-            v = sink
-            while v != -1 :
-                path.append(self.vertex_data[v])
-                v = parent[v]
-            path.reverse()
-            print("Path :"," -> ".join(path), f" || Flow : {path_flow}")
+        # Print MST
+        print("Edge\tWeight")
+        for u, v, weight in result:
+            print(f"{self.vertex_data[u]}-{self.vertex_data[v]} \t {weight}")
 
-        print("*"*45)
-        return max_flow
-    
-g = Graph(6)
-vertex_names = ['s', 'v1', 'v2', 'v3', 'v4', 't']
-for i, name in enumerate(vertex_names):
-    g.add_vertex_data(i, name)
+g = Graph(7)
+labels = ['A', 'B', 'C', 'D', 'E', 'F', 'G']
+for i, label in enumerate(labels):
+    g.add_vertex_data(i, label)
 
-g.add_edge(0, 1, 3)  # s -> v1
-g.add_edge(0, 2, 7)  # s -> v2
-g.add_edge(1, 3, 3)  # v1 -> v3
-g.add_edge(1, 4, 4)  # v1 -> v4
-g.add_edge(2, 1, 5)  # v2 -> v1
-g.add_edge(2, 4, 3)  # v2 -> v4
-g.add_edge(3, 4, 3)  # v3 -> v4
-g.add_edge(3, 5, 2)  # v3 -> t
-g.add_edge(4, 5, 6)  # v4 -> t
+g.add_edge(0, 1, 4)   # A-B
+g.add_edge(0, 6, 10)  # A-G
+g.add_edge(0, 2, 9)   # A-C
+g.add_edge(1, 2, 8)   # B-C
+g.add_edge(2, 3, 5)   # C-D
+g.add_edge(2, 4, 2)   # C-E
+g.add_edge(2, 6, 7)   # C-G
+g.add_edge(3, 4, 3)   # D-E
+g.add_edge(3, 5, 7)   # D-F
+g.add_edge(4, 6, 6)   # E-G
+g.add_edge(5, 6, 11)  # F-G
 
-source = 0  # s
-sink = 5    # t
-print(f"The maximum possible flow is: {g.edmonds_karp(source, sink)}")
-print("*"*45)
+print("*"*44 + "\nKruskal's Algorithm - Minimum Spanning Tree:\n"+"*"*44)
+
+g.kruskals_algorithm()
