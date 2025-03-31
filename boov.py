@@ -1,74 +1,63 @@
-class Graph:
-    def __init__(self, size):
+class Graph :
+    def __init__(self,size):
         self.size = size
-        self.edges = []  # List of (u, v, weight)
-        self.vertex_data = [''] * size  # Human-readable vertex labels
-
-    def add_edge(self, u, v, weight):
-        if 0 <= u < self.size and 0 <= v < self.size:
-            self.edges.append((u, v, weight))
-
-    def add_vertex_data(self, vertex, data):
-        if 0 <= vertex < self.size:
+        self.adj_matrix = [[0]*size for _ in range(size)]
+        self.vertex_data = ['']*size
+    
+    def add_vertex_data(self,vertex,data):
+        if 0<= vertex < self.size:
             self.vertex_data[vertex] = data
 
-    def find(self, parent, i):
-        # Path compression
-        if parent[i] != i:
-            parent[i] = self.find(parent, parent[i])
-        return parent[i]
+    def add_edge(self,u,v,weight):
+        if 0<=u<self.size and 0<=v<self.size :
+            self.adj_matrix[u][v] = weight
+            self.adj_matrix[v][u] = weight # For undirected Graph.
+        
+    def prims_algorithm(self):
+        key = [float("inf")] * self.size
+        parent = [-1]*self.size
+        in_mst = [False]* self.size
 
-    def union(self, parent, rank, x, y):
-        xroot = self.find(parent, x)
-        yroot = self.find(parent, y)
-        if rank[xroot] < rank[yroot]:
-            parent[xroot] = yroot
-        elif rank[xroot] > rank[yroot]:
-            parent[yroot] = xroot
-        else:
-            parent[yroot] = xroot
-            rank[xroot] += 1
+        key[0] =0
 
-    def kruskals_algorithm(self):
-        result = []  # Store MST edges
+        for _ in range(self.size):
+            # Find the vertex with the minimum key value not in MST
+            u = min((v for v in range(self.size) if not in_mst[v]),key=lambda x: key[x])
+            in_mst[u] = True
 
-        # Step 1: Sort edges by weight
-        self.edges.sort(key=lambda edge: edge[2])
-
-        # Step 2: Create disjoint sets
-        parent = list(range(self.size))
-        rank = [0] * self.size
-
-        for u, v, weight in self.edges:
-            root_u = self.find(parent, u)
-            root_v = self.find(parent, v)
-
-            if root_u != root_v:
-                result.append((u, v, weight))
-                self.union(parent, rank, root_u, root_v)
-
-        # Print MST
+            # Update the key and parent of adjacent vertices
+            for v in range(self.size):
+                weight = self.adj_matrix[u][v]
+                if weight > 0 and not in_mst[v] and weight < key[v]:
+                    key[v] = weight
+                    parent[v] = u
+        
+        print("*"*40 + "\nPrim's Algorithm - Minimum Spanning Tree:\n"+"*"*40)
         print("Edge\tWeight")
-        for u, v, weight in result:
-            print(f"{self.vertex_data[u]}-{self.vertex_data[v]} \t {weight}")
+        total_weight = 0
+        for v in range(1,self.size):
+            u = parent[v]
+            weight = self.adj_matrix[u][v]
+            print(f"{self.vertex_data[u]} - {self.vertex_data[v]}\t{weight}")
+            total_weight += weight
+        print(f"Total Weight of MST : {total_weight}")
 
-g = Graph(7)
-labels = ['A', 'B', 'C', 'D', 'E', 'F', 'G']
-for i, label in enumerate(labels):
-    g.add_vertex_data(i, label)
+g = Graph(8)
 
-g.add_edge(0, 1, 4)   # A-B
-g.add_edge(0, 6, 10)  # A-G
-g.add_edge(0, 2, 9)   # A-C
-g.add_edge(1, 2, 8)   # B-C
-g.add_edge(2, 3, 5)   # C-D
-g.add_edge(2, 4, 2)   # C-E
-g.add_edge(2, 6, 7)   # C-G
-g.add_edge(3, 4, 3)   # D-E
-g.add_edge(3, 5, 7)   # D-F
-g.add_edge(4, 6, 6)   # E-G
-g.add_edge(5, 6, 11)  # F-G
+# Assign labels to vertices
+labels = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H']
 
-print("*"*44 + "\nKruskal's Algorithm - Minimum Spanning Tree:\n"+"*"*44)
+for i,data in enumerate(labels):
+    g.add_vertex_data(i,data)
 
-g.kruskals_algorithm()
+# Add undirected edges with weights
+edges = [
+    (0, 1, 4), (0, 3, 3), (1, 2, 3), (1, 3, 5), (1, 4, 6),
+    (2, 4, 4), (2, 7, 2), (3, 4, 7), (3, 5, 4),
+    (4, 5, 5), (4, 6, 3), (5, 6, 7), (6, 7, 5)
+]
+
+for u,v,w in edges :
+    g.add_edge(u,v,w)
+
+g.prims_algorithm()
