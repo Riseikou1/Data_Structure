@@ -1,7 +1,9 @@
+from collections import deque
+
 class Graph :
     def __init__(self,size):
-        self.adj_matrix = [[0]*size for _ in range(size)]
         self.size = size
+        self.adj_matrix = [[0]*size for _ in range(size)]
         self.vertex_data = ['']*size
 
     def add_edge(self,u,v,capacity):
@@ -10,74 +12,76 @@ class Graph :
     def add_vertex_data(self,vertex,data):
         if 0<=vertex<self.size :
             self.vertex_data[vertex] = data
-    
-    def dfs(self,s,t,visited=None,path=None) :
-        if visited is None :
-            visited = [False]*self.size  # visited array to avoid revisiting the same vertices during the search for an augmented path.
-        if path is None :
-            path = []    # Vertices that belong to the augmented path are stored in the path array.
 
-        visited[s] = True
-        path.append(s)
+    def bfs(self,source,sink,parent):
+        visited = [False]*self.size
+        queue = deque([source])
+        visited[source] = True
+        parent[source] = -1
 
-        if s == t :  # if current vertex is the sink node,we have found an augmented path from the source vertex to the sink vertex,so that path can be returned.
-            return path
-        
-        for ind, val in enumerate(self.adj_matrix[s]) :
-            if not visited[ind] and val > 0 :
-                result_path = self.dfs(ind,t,visited,path.copy())
-                if result_path :
-                    return result_path
-        
-        return None  # if no path is found.
+        while queue :
+            u = queue.popleft()
+            for v,capacity in enumerate(self.adj_matrix[u]) :
+                if not visited[v] and capacity > 0 :
+                    parent[v] = u
+                    visited[v] = True
+                    queue.append(v)
+                    if v == sink :
+                        return True
+        return False
     
-    def fordFulkerson(self,source,sink) :
+    def edmonds_karp(self,source,sink):
+        parent = [-1]*self.size
         max_flow = 0
-        path = self.dfs(source,sink)
-        while path :
-            path_flow = float("inf")
-            for i in range(len(path)-1):
-                u,v = path[i] , path[i+1]
-                path_flow = min(path_flow,self.adj_matrix[u][v])
 
-            for i in range(len(path)-1) :
-                u,v = path[i] , path[i+1]
+        print("*"*45)
+        print("Augmenting Paths Found: ")
+
+        while self.bfs(source,sink,parent):
+            path_flow = float("inf")
+            v = sink
+
+            while v != source :
+                u = parent[v]
+                path_flow = min(path_flow,self.adj_matrix[u][v])
+                v = u
+
+            v = sink
+            while v != source :
+                u = parent[v]
                 self.adj_matrix[u][v] -= path_flow
                 self.adj_matrix[v][u] += path_flow
-            
+                v = u
+
             max_flow += path_flow
 
-            path_names = [self.vertex_data[node] for node in path] 
-            print("Path:"," -> ".join(path_names), ", Flow :",path_flow)
+            path = []
+            v = sink
+            while v != -1 :
+                path.append(self.vertex_data[v])
+                v = parent[v]
+            path.reverse()
+            print("Path :"," -> ".join(path), f" || Flow : {path_flow}")
 
-            path = self.dfs(source,sink)
-
+        print("*"*45)
         return max_flow
     
-
 g = Graph(6)
 vertex_names = ['s', 'v1', 'v2', 'v3', 'v4', 't']
 for i, name in enumerate(vertex_names):
     g.add_vertex_data(i, name)
 
-g.add_edge(0, 1, 3)  # s  -> v1, cap: 3
-g.add_edge(0, 2, 7)  # s  -> v2, cap: 7
-g.add_edge(1, 3, 3)  # v1 -> v3, cap: 3
-g.add_edge(1, 4, 4)  # v1 -> v4, cap: 4
-g.add_edge(2, 1, 5)  # v2 -> v1, cap: 5
-g.add_edge(2, 4, 3)  # v2 -> v4, cap: 3
-g.add_edge(3, 4, 3)  # v3 -> v4, cap: 3
-g.add_edge(3, 5, 2)  # v3 -> t,  cap: 2
-g.add_edge(4, 5, 6)  # v4 -> t,  cap: 6
+g.add_edge(0, 1, 3)  # s -> v1
+g.add_edge(0, 2, 7)  # s -> v2
+g.add_edge(1, 3, 3)  # v1 -> v3
+g.add_edge(1, 4, 4)  # v1 -> v4
+g.add_edge(2, 1, 5)  # v2 -> v1
+g.add_edge(2, 4, 3)  # v2 -> v4
+g.add_edge(3, 4, 3)  # v3 -> v4
+g.add_edge(3, 5, 2)  # v3 -> t
+g.add_edge(4, 5, 6)  # v4 -> t
 
-source = 0; sink = 5
-
-print("The maximum possible flow is %d " % g.fordFulkerson(source, sink))
-    
-
-#class with size
-#add_edge
-# add_vertex_data
-# dfs => source,sink,visited,path
-# fordFUlkerson => source,sink
-
+source = 0  # s
+sink = 5    # t
+print(f"The maximum possible flow is: {g.edmonds_karp(source, sink)}")
+print("*"*45)
