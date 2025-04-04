@@ -1,127 +1,62 @@
 #include <iostream>
+#include <iomanip>
+#include <ctime>    
 using namespace std;
 
-class Node {
-public:
-    int data;
-    Node* left;
-    Node* right;
-    
-    Node(int data) {
-        this->data = data;
-        left = right = nullptr;
+int getDaysInMonth(int month, int year) {
+
+    const int daysInMonth[] = { 31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31 };
+
+    if (month == 2 && (year % 400 == 0 || (year % 4 == 0 && year % 100 != 0))) {
+        return 29;
     }
-};
+    return daysInMonth[month - 1]; 
+}
+void printCalendar(int month, int year) {
 
-class BinaryTree {
-private:
-    Node* root;
+    struct tm firstDay = { 0 };
+    firstDay.tm_year = year - 1900;  
+    firstDay.tm_mon = month - 1;    
+    firstDay.tm_mday = 1;       
+    mktime(&firstDay);              
 
-    Node* insertHelper(Node* root, Node* node) {
-        if (root == nullptr) {
-            return node;
-        }
-        if (node->data < root->data) {
-            root->left = insertHelper(root->left, node);
-        } else {
-            root->right = insertHelper(root->right, node);
-        }
-        return root;
+    int startingDay = firstDay.tm_wday; 
+
+    cout << year << " " << month << "\n";
+
+    for (int i = 0; i < startingDay; i++) {
+        cout << "0 "; 
     }
 
-    void displayHelper(Node* root) {
-        if (root != nullptr) {
-            displayHelper(root->left);
-            cout << root->data << " ";
-            displayHelper(root->right);
+    int daysInMonth = getDaysInMonth(month, year);
+
+    for (int day = 1; day <= daysInMonth; day++) {
+        cout << day << " ";  
+        if ((startingDay + day) % 7 == 0) {
+            cout << endl;
         }
     }
 
-    bool searchHelper(Node* root, int data) {
-        if (root == nullptr) return false;
-        if (root->data == data) return true;
-        if (data < root->data) return searchHelper(root->left, data);
-        return searchHelper(root->right, data);
-    }
-
-    Node* removeHelper(Node* root, int data) {
-        if (root == nullptr) {
-            return root;
-        } else if (data < root->data) {
-            root->left = removeHelper(root->left, data);
-        } else if (data > root->data) {
-            root->right = removeHelper(root->right, data);
-        } else {
-            if (root->left == nullptr && root->right == nullptr) {
-                delete root;
-                return nullptr;
-            } else if (root->right != nullptr) {
-                root->data = successor(root);
-                root->right = removeHelper(root->right, root->data);
-            } else {
-                root->data = predecessor(root);
-                root->left = removeHelper(root->left, root->data);
-            }
-        }
-        return root;
-    }
-
-    int successor(Node* root) {
-        root = root->right;
-        while (root->left != nullptr) {
-            root = root->left;
-        }
-        return root->data;
-    }
-
-    int predecessor(Node* root) {
-        root = root->left;
-        while (root->right != nullptr) {
-            root = root->right;
-        }
-        return root->data;
-    }
-    
-public:
-    BinaryTree() { root = nullptr; }
-
-    void insertNode(int data) {
-        root = insertHelper(root, new Node(data));
-    }
-
-    void display() {
-        displayHelper(root);
-        cout << endl;
-    }
-
-    bool search(int data) {
-        return searchHelper(root, data);
-    }
-
-    void remove(int data) {
-        if (search(data)) {
-            root = removeHelper(root, data);
-        } else {
-            cout << "Couldn't find the data." << endl;
+    int remainingDays = (startingDay + daysInMonth) % 7;
+    if (remainingDays != 0) {
+        for (int i = remainingDays; i < 7; i++) {
+            cout << "0 ";  
         }
     }
-};
-
+    cout << endl;  
+}
 int main() {
-    BinaryTree tree;
-    tree.insertNode(5);
-    tree.insertNode(1);
-    tree.insertNode(9);
-    tree.insertNode(2);
-    tree.insertNode(7);
-    tree.insertNode(3);
-    tree.insertNode(6);
-    tree.insertNode(4);
-    tree.insertNode(8);
+    int numiter;
+    cin >> numiter;
 
-    tree.remove(4);
-    tree.display();
-    cout << tree.search(4) << endl;
+    for(int i=0;i<numiter;i++){
 
+        int year, month;
+
+        cin >> year;
+        cin >> month;
+    
+        printCalendar(month, year);
+    }
     return 0;
 }
