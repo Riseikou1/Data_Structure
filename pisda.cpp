@@ -1,92 +1,127 @@
 #include <iostream>
-#include <vector>
-#include <climits>
 using namespace std;
 
-class Graph {
-    int size;
-    vector<vector<int>> adj_matrix;
-    vector<string> vertex_data;
-
+class Node {
 public:
-    Graph(int size) : size(size), adj_matrix(size, vector<int>(size, 0)), vertex_data(size, "") {}
+    int data;
+    Node* left;
+    Node* right;
+    
+    Node(int data) {
+        this->data = data;
+        left = right = nullptr;
+    }
+};
 
-    void add_vertex_data(int vertex, const string& data) {
-        if (vertex >= 0 && vertex < size) {
-            vertex_data[vertex] = data;
+class BinaryTree {
+private:
+    Node* root;
+
+    Node* insertHelper(Node* root, Node* node) {
+        if (root == nullptr) {
+            return node;
+        }
+        if (node->data < root->data) {
+            root->left = insertHelper(root->left, node);
+        } else {
+            root->right = insertHelper(root->right, node);
+        }
+        return root;
+    }
+
+    void displayHelper(Node* root) {
+        if (root != nullptr) {
+            displayHelper(root->left);
+            cout << root->data << " ";
+            displayHelper(root->right);
         }
     }
 
-    void add_edge(int u, int v, int weight) {
-        if (u >= 0 && u < size && v >= 0 && v < size) {
-            adj_matrix[u][v] = weight;
-            adj_matrix[v][u] = weight; // Undirected
-        }
+    bool searchHelper(Node* root, int data) {
+        if (root == nullptr) return false;
+        if (root->data == data) return true;
+        if (data < root->data) return searchHelper(root->left, data);
+        return searchHelper(root->right, data);
     }
 
-    void prims_algorithm() {
-        vector<int> key(size, INT_MAX);
-        vector<int> parent(size, -1);
-        vector<bool> in_mst(size, false);
-
-        key[0] = 0;
-
-        for (int count = 0; count < size; ++count) {
-            // Find the minimum key vertex not yet included in MST
-            int u = -1;
-            int min_key = INT_MAX;
-            for (int v = 0; v < size; ++v) {
-                if (!in_mst[v] && key[v] < min_key) {
-                    min_key = key[v];
-                    u = v;
-                }
-            }
-
-            if (u == -1) break; // disconnected graph
-            in_mst[u] = true;
-
-            // Update key and parent of adjacent vertices
-            for (int v = 0; v < size; ++v) {
-                int weight = adj_matrix[u][v];
-                if (weight && !in_mst[v] && weight < key[v]) {
-                    key[v] = weight;
-                    parent[v] = u;
-                }
+    Node* removeHelper(Node* root, int data) {
+        if (root == nullptr) {
+            return root;
+        } else if (data < root->data) {
+            root->left = removeHelper(root->left, data);
+        } else if (data > root->data) {
+            root->right = removeHelper(root->right, data);
+        } else {
+            if (root->left == nullptr && root->right == nullptr) {
+                delete root;
+                return nullptr;
+            } else if (root->right != nullptr) {
+                root->data = successor(root);
+                root->right = removeHelper(root->right, root->data);
+            } else {
+                root->data = predecessor(root);
+                root->left = removeHelper(root->left, root->data);
             }
         }
+        return root;
+    }
 
-        cout << string(40, '*') << "\nPrim's Algorithm - Minimum Spanning Tree:\n" << string(40, '*') << endl;
-        cout << "Edge\tWeight" << endl;
-        int total_weight = 0;
-        for (int v = 1; v < size; ++v) {
-            int u = parent[v];
-            int weight = adj_matrix[u][v];
-            cout << vertex_data[u] << " - " << vertex_data[v] << "\t" << weight << endl;
-            total_weight += weight;
+    int successor(Node* root) {
+        root = root->right;
+        while (root->left != nullptr) {
+            root = root->left;
         }
-        cout << "Total Weight of MST : " << total_weight << endl;
+        return root->data;
+    }
+
+    int predecessor(Node* root) {
+        root = root->left;
+        while (root->right != nullptr) {
+            root = root->right;
+        }
+        return root->data;
+    }
+    
+public:
+    BinaryTree() { root = nullptr; }
+
+    void insertNode(int data) {
+        root = insertHelper(root, new Node(data));
+    }
+
+    void display() {
+        displayHelper(root);
+        cout << endl;
+    }
+
+    bool search(int data) {
+        return searchHelper(root, data);
+    }
+
+    void remove(int data) {
+        if (search(data)) {
+            root = removeHelper(root, data);
+        } else {
+            cout << "Couldn't find the data." << endl;
+        }
     }
 };
 
 int main() {
-    Graph g(8);
-    vector<string> labels = {"A", "B", "C", "D", "E", "F", "G", "H"};
+    BinaryTree tree;
+    tree.insertNode(5);
+    tree.insertNode(1);
+    tree.insertNode(9);
+    tree.insertNode(2);
+    tree.insertNode(7);
+    tree.insertNode(3);
+    tree.insertNode(6);
+    tree.insertNode(4);
+    tree.insertNode(8);
 
-    for (int i = 0; i < labels.size(); ++i) {
-        g.add_vertex_data(i, labels[i]);
-    }
-
-    vector<tuple<int, int, int>> edges = {
-        {0, 1, 4}, {0, 3, 3}, {1, 2, 3}, {1, 3, 5}, {1, 4, 6},
-        {2, 4, 4}, {2, 7, 2}, {3, 4, 7}, {3, 5, 4},
-        {4, 5, 5}, {4, 6, 3}, {5, 6, 7}, {6, 7, 5}
-    };
-
-    for (const auto& [u, v, w] : edges) {
-        g.add_edge(u, v, w);
-    }
-
-    g.prims_algorithm();
+    tree.remove(4);
+    tree.display();
+    cout << tree.search(4) << endl;
 
     return 0;
 }
