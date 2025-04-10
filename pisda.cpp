@@ -1,126 +1,118 @@
 #include <iostream>
 #include <vector>
-#include <climits>
+#include <queue>
+#include <string>
+#include <limits>
 #include <algorithm>
 
 using namespace std;
 
 class Graph {
+private:
     int size;
     vector<vector<int>> adj_matrix;
     vector<string> vertex_data;
 
 public:
-    Graph(int size) : size(size), adj_matrix(size, vector<int>(size, 0)), vertex_data(size, "") {}
+    Graph(int n) : size(n), adj_matrix(n, vector<int>(n, 0)), vertex_data(n, "") {}
 
-    // Add an edge with a given capacity
-    void add_edge(int u, int v, int capacity) {
-        adj_matrix[u][v] = capacity;
-    }
-
-    // Add vertex names
     void add_vertex_data(int vertex, const string& data) {
-        if (vertex >= 0 && vertex < size) {
+        if (vertex >= 0 && vertex < size)
             vertex_data[vertex] = data;
+    }
+
+    void add_edge(int u, int v, int weight, bool bidirectional = false) {
+        if (u >= 0 && u < size && v >= 0 && v < size) {
+            adj_matrix[u][v] = weight;
+            if (bidirectional)
+                adj_matrix[v][u] = weight;
         }
     }
 
-    // DFS to find an augmenting path
-    bool dfs(int s, int t, vector<bool>& visited, vector<int>& path) {
-        visited[s] = true;
-        path.push_back(s);
+    void dijkstra(const string& start_vertex_data, vector<int>& distances, vector<int>& previous) {
+        int start = find(vertex_data.begin(), vertex_data.end(), start_vertex_data) - vertex_data.begin();
 
-        if (s == t) {  // If we reached the sink, return the path
-            return true;
-        }
+        distances.assign(size, numeric_limits<int>::max());
+        previous.assign(size, -1);
+        vector<bool> visited(size, false);
+        distances[start] = 0;
 
-        for (int ind = 0; ind < size; ++ind) {
-            if (!visited[ind] && adj_matrix[s][ind] > 0) {
-                if (dfs(ind, t, visited, path)) {
-                    return true;
+        // Min-heap using pair: (distance, vertex)
+        priority_queue<pair<int, int>, vector<pair<int, int>>, greater<>> min_heap;
+        min_heap.push({0, start});
+
+        while (!min_heap.empty()) {
+            auto [current_dist, u] = min_heap.top();
+            min_heap.pop();
+
+            if (visited[u]) continue;
+            visited[u] = true;
+
+            for (int v = 0; v < size; ++v) {
+                int weight = adj_matrix[u][v];
+                if (weight != 0 && !visited[v]) {
+                    int new_dist = current_dist + weight;
+                    if (new_dist < distances[v]) {
+                        distances[v] = new_dist;
+                        previous[v] = u;
+                        min_heap.push({new_dist, v});
+                    }
                 }
             }
         }
-
-        path.pop_back();  // No path found, backtrack
-        return false;
     }
 
-    // Ford-Fulkerson algorithm to find the maximum flow
-    int fordFulkerson(int source, int sink) {
-        int max_flow = 0;
-        
-        while (true) {
-            vector<int> path;
-            vector<bool> visited(size, false);
-            path.clear();
-            
-            if (!dfs(source, sink, visited, path)) {
-                break;  // No augmenting path found
-            }
+    void print_paths(const string& start_vertex_data, const vector<int>& distances, const vector<int>& previous) {
 
-            // Find the maximum flow in the current path
-            int path_flow = INT_MAX;
-            for (int i = 0; i < path.size() - 1; ++i) {
-                int u = path[i];
-                int v = path[i + 1];
-                path_flow = min(path_flow, adj_matrix[u][v]);
-            }
+        cout << "\nShortest paths from " << start_vertex_data << ":\n";
+        cout << "----------------------------------------\n";
 
-            // Update the residual graph
-            for (int i = 0; i < path.size() - 1; ++i) {
-                int u = path[i];
-                int v = path[i + 1];
-                adj_matrix[u][v] -= path_flow;
-                adj_matrix[v][u] += path_flow;
+        for (int i = 0; i < size; ++i) {
+            vector<string> path;
+            int j = i;
+            while (j != -1) {
+                path.push_back(vertex_data[j]);
+                j = previous[j];
             }
+            reverse(path.begin(), path.end());
 
-            max_flow += path_flow;
-
-            // Print the path and the flow
-            vector<string> path_names;
-            for (int node : path) {
-                path_names.push_back(vertex_data[node]);
-            }
-            cout << "Path: ";
-            for (size_t i = 0; i < path_names.size(); ++i) {
-                cout << path_names[i];
-                if (i != path_names.size() - 1) {
+            cout << start_vertex_data << " to " << vertex_data[i] << ": ";
+            for (size_t k = 0; k < path.size(); ++k) {
+                cout << path[k];
+                if (k != path.size() - 1)
                     cout << " -> ";
-                }
             }
-            cout << " , Flow: " << path_flow << endl;
-        }
 
-        return max_flow;
+            if (distances[i] == numeric_limits<int>::max())
+                cout << " | Distance: ∞" << endl;
+            else
+                cout << " | Distance: " << distances[i] << endl;
+        }
     }
 };
 
+// === Main Function ===
+
 int main() {
-    Graph g(6);
-    vector<string> vertex_names = {"s", "v1", "v2", "v3", "v4", "t"};
-    
-    for (int i = 0; i < 6; ++i) {
-        g.add_vertex_data(i, vertex_names[i]);
-    }
+    Graph g(7);
+    vector<string> labels = {"A", "B", "C", "D", "E", "F", "G"};
+    for (int i = 0; i < labels.size(); ++i)
+        g.add_vertex_data(i, labels[i]);
 
-    // Add edges with capacities
-    g.add_edge(0, 1, 3);  // s  -> v1, cap: 3
-    g.add_edge(0, 2, 7);  // s  -> v2, cap: 7
-    g.add_edge(1, 3, 3);  // v1 -> v3, cap: 3
-    g.add_edge(1, 4, 4);  // v1 -> v4, cap: 4
-    g.add_edge(2, 1, 5);  // v2 -> v1, cap: 5
-    g.add_edge(2, 4, 3);  // v2 -> v4, cap: 3
-    g.add_edge(3, 4, 3);  // v3 -> v4, cap: 3
-    g.add_edge(3, 5, 2);  // v3 -> t,  cap: 2
-    g.add_edge(4, 5, 6);  // v4 -> t,  cap: 6
+    g.add_edge(3, 0, 4); // D -> A
+    g.add_edge(3, 4, 2); // D -> E
+    g.add_edge(0, 2, 3); // A -> C
+    g.add_edge(0, 4, 4); // A -> E
+    g.add_edge(4, 2, 4); // E -> C
+    g.add_edge(4, 6, 5); // E -> G
+    g.add_edge(2, 5, 5); // C -> F
+    g.add_edge(2, 1, 2); // C -> B
+    g.add_edge(1, 5, 2); // B -> F
+    g.add_edge(6, 5, 5); // G -> F
 
-    // Source and Sink
-    int source = 0, sink = 5;
-
-    // Calculate and output the maximum flow
-    int temuujin = g.fordFulkerson(source, sink);
-    cout << "The maximum possible flow is : " << temuujin << endl; 
+    vector<int> distances, previous;
+    g.dijkstra("D", distances, previous);
+    g.print_paths("D", distances, previous);
 
     return 0;
 }
