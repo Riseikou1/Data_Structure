@@ -1,131 +1,210 @@
 #include <iostream>
 #include <vector>
-#include <string>
 #include <algorithm>
-#include <limits>
+
 using namespace std;
 
-class Graph{
-private:
+class Graph {
     int size;
+    vector<tuple<int, int, int>> edges;  // List of (u, v, weight)
+    vector<string> vertex_data;  // Human-readable vertex labels
+
 public:
-    vector<vector<int>> adj_matrix;
-    vector<string> vertex_data;
+    Graph(int size) : size(size), vertex_data(size, "") {}
 
-    Graph(int size) : size(size), adj_matrix(size, vector<int>(size, 0)), vertex_data(size, "") {}
-
-    void add_edge(int v, int u, int weight) {
-        if (u >= 0 && u < size && v >= 0 && v < size) {
-            adj_matrix[u][v] = weight;
+    void add_edge(const int u, const int v, const int weight) {
+        if (0 <= u && u < size && 0 <= v && v < size) {
+            edges.push_back(make_tuple(u, v, weight));
         }
     }
 
     void add_vertex_data(int vertex, const string& data) {
-        if (vertex < size && vertex >= 0) {
+        if (0 <= vertex && vertex < size) {
             vertex_data[vertex] = data;
         }
     }
 
-    tuple<bool, vector<int>, vector<int>> bellman_ford(const string& start_vertex_data, vector<int>& distances, vector<int>& predecessors) {
-        int start_vertex = find(vertex_data.begin(), vertex_data.end(), start_vertex_data) - vertex_data.begin();
-        distances.assign(size, numeric_limits<int>::infinity());
-        predecessors.assign(size, -1);
-        distances[start_vertex] = 0;
-
-        for (int i = 0; i < size - 1; i++) {
-            bool updated = false;
-            for (int u = 0; u < size; u++) {
-                for (int v = 0; v < size; v++) {
-                    if (adj_matrix[u][v] != 0) {
-                        int new_dist = adj_matrix[u][v] + distances[u];
-                        if (new_dist < distances[v]) {
-                            distances[v] = new_dist;
-                            predecessors[v] = u;
-                            updated = true;
-                        }
-                    }
-                }
-            }
-            if (!updated) {
-                break;
-            }
+    int find(vector<int>& parent, int i) {
+        // Path compression
+        if (parent[i] != i) {
+            parent[i] = find(parent, parent[i]);
         }
-
-        // Check for negative weight cycles
-        for (int u = 0; u < size; u++) {
-            for (int v = 0; v < size; v++) {
-                if (adj_matrix[u][v] != 0 && distances[u] + adj_matrix[u][v] < distances[v]) {
-                    return {true, {}, {}};
-                }
-            }
-        }
-        return {false, distances, predecessors};
+        return parent[i];
     }
 
-    string get_path(const string& start_vertex_data, const string& end_vertex_data, vector<int>& predecessors) {
-        int start_vertex = find(vertex_data.begin(), vertex_data.end(), start_vertex_data) - vertex_data.begin();
-        int end_vertex = find(vertex_data.begin(), vertex_data.end(), end_vertex_data) - vertex_data.begin();
+    void union_sets(vector<int>& parent, vector<int>& rank,const int x, const int y) {
+        int xroot = find(parent, x);
+        int yroot = find(parent, y);
 
-        vector<string> path;
-        int current = end_vertex;
+        if (rank[xroot] < rank[yroot]) {
+            parent[xroot] = yroot;
+        } else if (rank[xroot] > rank[yroot]) {
+            parent[yroot] = xroot;
+        } else {
+            parent[yroot] = xroot;
+            rank[xroot]++;
+        }
+    }
 
-        // Path reconstruction
-        while (current != -1) {
-            path.insert(path.begin(), vertex_data[current]);
-            current = predecessors[current];
-            if (current == start_vertex) {
-                path.insert(path.begin(), vertex_data[start_vertex]);
-                break;
+    void kruskals_algorithm() {
+        vector<tuple<int, int, int>> result;  // Store MST edges
+
+        // Step 1: Sort edges by weight
+        sort(edges.begin(), edges.end(), [](const tuple<int, int, int>& a, const tuple<int, int, int>& b) {
+            return get<2>(a) < get<2>(b);
+        });
+
+        // Step 2: Create disjoint sets
+        vector<int> parent(size);
+        vector<int> rank(size, 0);
+        for (int i = 0; i < size; ++i) {
+            parent[i] = i;
+        }
+
+        for (const auto& edge : edges) {
+            int u = get<0>(edge);
+            int v = get<1>(edge);
+            int weight = get<2>(edge);
+
+            int root_u = find(parent, u);
+            int root_v = find(parent, v);
+
+            if (root_u != root_v) {
+                result.push_back(edge);
+                union_sets(parent, rank, root_u, root_v);
             }
         }
 
-        string path_str;
-        for (const auto& vertex : path) {
-            path_str += vertex + "->";
+        // Print MST
+        cout << "Edge\tWeight\n";
+        for (const auto& edge : result) {
+            int u = get<0>(edge);
+            int v = get<1>(edge);
+            int weight = get<2>(edge);
+            cout << vertex_data[u] << "-" << vertex_data[v] << " \t " << weight << endl;
         }
-        if (!path_str.empty()) {
-            path_str.pop_back();  // Remove the last arrow
-        }
-        return path_str;
     }
 };
 
 int main() {
-    Graph g(5);
+    Graph g(7);
+    vector<string> labels = {"A", "B", "C", "D", "E", "F", "G"};
+    for (int i = 0; i < labels.size(); ++i) {
+        g.add_vertex_data(i, labels[i]);
+    }
 
-    // Add vertices with labels
-    g.add_vertex_data(0, "A");
-    g.add_vertex_data(1, "B");
-    g.add_vertex_data(2, "C");
-    g.add_vertex_data(3, "D");
-    g.add_vertex_data(4, "E");
+    g.add_edge(0, 1, 4);   // A-B
+    g.add_edge(0, 6, 10);  // A-G
+    g.add_edge(0, 2, 9);   // A-C
+    g.add_edge(1, 2, 8);   // B-C
+    g.add_edge(2, 3, 5);   // C-D
+    g.add_edge(2, 4, 2);   // C-E
+    g.add_edge(2, 6, 7);   // C-G
+    g.add_edge(3, 4, 3);   // D-E
+    g.add_edge(3, 5, 7);   // D-F
+    g.add_edge(4, 6, 6);   // E-G
+    g.add_edge(5, 6, 11);  // F-G
 
-    // Add directed edges with weights
-    g.add_edge(3, 0, 4);  // D -> A, weight 4
-    g.add_edge(3, 2, 7);  // D -> C, weight 7
-    g.add_edge(3, 4, 3);  // D -> E, weight 3
-    g.add_edge(0, 2, 4);  // A -> C, weight 4
-    g.add_edge(2, 0, -3); // C -> A, weight -3
-    g.add_edge(0, 4, 5);  // A -> E, weight 5
-    g.add_edge(4, 2, 3);  // E -> C, weight 3
-    g.add_edge(1, 2, -4); // B -> C, weight -4
-    g.add_edge(4, 1, 2);  // E -> B, weight 2
+    cout << string(44, '*') << "\nKruskal's Algorithm - Minimum Spanning Tree:\n" << string(44, '*') << endl;
 
-    vector<int> distances, predecessors;
-    auto [negative_cycle, distances_result, predecessors_result] = g.bellman_ford("D", distances, predecessors);
+    g.kruskals_algorithm();
 
-    if (!negative_cycle) {
-        for (int i = 0; i < distances_result.size(); i++) {
-            if (distances_result[i] != numeric_limits<int>::infinity()) {
-                string string_path = g.get_path("D", g.vertex_data[i], predecessors_result);
-                cout << "Shortest path from D to " << g.vertex_data[i] << ": " << string_path << ", Distance: " << distances_result[i] << endl;
-            } else {
-                cout << "No path from D to " << g.vertex_data[i] << ", Distance: Infinity" << endl;
+    return 0;
+}
+
+
+
+
+
+#include <iostream>
+#include <vector>
+#include <climits>
+using namespace std;
+
+class Graph {
+    int size;
+    vector<vector<int>> adj_matrix;
+    vector<string> vertex_data;
+
+public:
+    Graph(int size) : size(size), adj_matrix(size, vector<int>(size, 0)), vertex_data(size, "") {}
+
+    void add_vertex_data(int vertex, const string& data) {
+        if (vertex >= 0 && vertex < size) {
+            vertex_data[vertex] = data;
+        }
+    }
+
+    void add_edge(int u, int v, int weight) {
+        if (u >= 0 && u < size && v >= 0 && v < size) {
+            adj_matrix[u][v] = weight;
+            adj_matrix[v][u] = weight; // Undirected
+        }
+    }
+
+    void prims_algorithm() {
+        vector<int> key(size, INT_MAX);
+        vector<int> parent(size, -1);
+        vector<bool> in_mst(size, false);
+
+        key[0] = 0;
+
+        for (int count = 0; count < size; ++count) {
+            // Find the minimum key vertex not yet included in MST
+            int u = -1;
+            int min_key = INT_MAX;
+            for (int v = 0; v < size; ++v) {
+                if (!in_mst[v] && key[v] < min_key) {
+                    min_key = key[v];
+                    u = v;
+                }
+            }
+
+            if (u == -1) break; // disconnected graph
+            in_mst[u] = true;
+
+            // Update key and parent of adjacent vertices
+            for (int v = 0; v < size; ++v) {
+                int weight = adj_matrix[u][v];
+                if (weight && !in_mst[v] && weight < key[v]) {
+                    key[v] = weight;
+                    parent[v] = u;
+                }
             }
         }
-    } else {
-        cout << "Negative weight cycle detected. Cannot compute shortest paths." << endl;
+
+        cout << string(40, '*') << "\nPrim's Algorithm - Minimum Spanning Tree:\n" << string(40, '*') << endl;
+        cout << "Edge\tWeight" << endl;
+        int total_weight = 0;
+        for (int v = 1; v < size; ++v) {
+            int u = parent[v];
+            int weight = adj_matrix[u][v];
+            cout << vertex_data[u] << " - " << vertex_data[v] << "\t" << weight << endl;
+            total_weight += weight;
+        }
+        cout << "Total Weight of MST : " << total_weight << endl;
     }
+};
+
+int main() {
+    Graph g(8);
+    vector<string> labels = {"A", "B", "C", "D", "E", "F", "G", "H"};
+
+    for (int i = 0; i < labels.size(); ++i) {
+        g.add_vertex_data(i, labels[i]);
+    }
+
+    vector<tuple<int, int, int>> edges = {
+        {0, 1, 4}, {0, 3, 3}, {1, 2, 3}, {1, 3, 5}, {1, 4, 6},
+        {2, 4, 4}, {2, 7, 2}, {3, 4, 7}, {3, 5, 4},
+        {4, 5, 5}, {4, 6, 3}, {5, 6, 7}, {6, 7, 5}
+    };
+
+    for (const auto& [u, v, w] : edges) {
+        g.add_edge(u, v, w);
+    }
+
+    g.prims_algorithm();
 
     return 0;
 }
