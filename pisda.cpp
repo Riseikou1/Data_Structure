@@ -1,118 +1,131 @@
 #include <iostream>
 #include <vector>
-#include <queue>
 #include <string>
-#include <limits>
 #include <algorithm>
-
+#include <limits>
 using namespace std;
 
-class Graph {
+class Graph{
 private:
     int size;
+public:
     vector<vector<int>> adj_matrix;
     vector<string> vertex_data;
 
-public:
-    Graph(int n) : size(n), adj_matrix(n, vector<int>(n, 0)), vertex_data(n, "") {}
+    Graph(int size) : size(size), adj_matrix(size, vector<int>(size, 0)), vertex_data(size, "") {}
 
-    void add_vertex_data(int vertex, const string& data) {
-        if (vertex >= 0 && vertex < size)
-            vertex_data[vertex] = data;
-    }
-
-    void add_edge(int u, int v, int weight, bool bidirectional = false) {
+    void add_edge(int v, int u, int weight) {
         if (u >= 0 && u < size && v >= 0 && v < size) {
             adj_matrix[u][v] = weight;
-            if (bidirectional)
-                adj_matrix[v][u] = weight;
         }
     }
 
-    void dijkstra(const string& start_vertex_data, vector<int>& distances, vector<int>& previous) {
-        int start = find(vertex_data.begin(), vertex_data.end(), start_vertex_data) - vertex_data.begin();
+    void add_vertex_data(int vertex, const string& data) {
+        if (vertex < size && vertex >= 0) {
+            vertex_data[vertex] = data;
+        }
+    }
 
-        distances.assign(size, numeric_limits<int>::max());
-        previous.assign(size, -1);
-        vector<bool> visited(size, false);
-        distances[start] = 0;
+    tuple<bool, vector<int>, vector<int>> bellman_ford(const string& start_vertex_data, vector<int>& distances, vector<int>& predecessors) {
+        int start_vertex = find(vertex_data.begin(), vertex_data.end(), start_vertex_data) - vertex_data.begin();
+        distances.assign(size, numeric_limits<int>::infinity());
+        predecessors.assign(size, -1);
+        distances[start_vertex] = 0;
 
-        // Min-heap using pair: (distance, vertex)
-        priority_queue<pair<int, int>, vector<pair<int, int>>, greater<>> min_heap;
-        min_heap.push({0, start});
-
-        while (!min_heap.empty()) {
-            auto [current_dist, u] = min_heap.top();
-            min_heap.pop();
-
-            if (visited[u]) continue;
-            visited[u] = true;
-
-            for (int v = 0; v < size; ++v) {
-                int weight = adj_matrix[u][v];
-                if (weight != 0 && !visited[v]) {
-                    int new_dist = current_dist + weight;
-                    if (new_dist < distances[v]) {
-                        distances[v] = new_dist;
-                        previous[v] = u;
-                        min_heap.push({new_dist, v});
+        for (int i = 0; i < size - 1; i++) {
+            bool updated = false;
+            for (int u = 0; u < size; u++) {
+                for (int v = 0; v < size; v++) {
+                    if (adj_matrix[u][v] != 0) {
+                        int new_dist = adj_matrix[u][v] + distances[u];
+                        if (new_dist < distances[v]) {
+                            distances[v] = new_dist;
+                            predecessors[v] = u;
+                            updated = true;
+                        }
                     }
                 }
             }
+            if (!updated) {
+                break;
+            }
         }
+
+        // Check for negative weight cycles
+        for (int u = 0; u < size; u++) {
+            for (int v = 0; v < size; v++) {
+                if (adj_matrix[u][v] != 0 && distances[u] + adj_matrix[u][v] < distances[v]) {
+                    return {true, {}, {}};
+                }
+            }
+        }
+        return {false, distances, predecessors};
     }
 
-    void print_paths(const string& start_vertex_data, const vector<int>& distances, const vector<int>& previous) {
+    string get_path(const string& start_vertex_data, const string& end_vertex_data, vector<int>& predecessors) {
+        int start_vertex = find(vertex_data.begin(), vertex_data.end(), start_vertex_data) - vertex_data.begin();
+        int end_vertex = find(vertex_data.begin(), vertex_data.end(), end_vertex_data) - vertex_data.begin();
 
-        cout << "\nShortest paths from " << start_vertex_data << ":\n";
-        cout << "----------------------------------------\n";
+        vector<string> path;
+        int current = end_vertex;
 
-        for (int i = 0; i < size; ++i) {
-            vector<string> path;
-            int j = i;
-            while (j != -1) {
-                path.push_back(vertex_data[j]);
-                j = previous[j];
+        // Path reconstruction
+        while (current != -1) {
+            path.insert(path.begin(), vertex_data[current]);
+            current = predecessors[current];
+            if (current == start_vertex) {
+                path.insert(path.begin(), vertex_data[start_vertex]);
+                break;
             }
-            reverse(path.begin(), path.end());
-
-            cout << start_vertex_data << " to " << vertex_data[i] << ": ";
-            for (size_t k = 0; k < path.size(); ++k) {
-                cout << path[k];
-                if (k != path.size() - 1)
-                    cout << " -> ";
-            }
-
-            if (distances[i] == numeric_limits<int>::max())
-                cout << " | Distance: ∞" << endl;
-            else
-                cout << " | Distance: " << distances[i] << endl;
         }
+
+        string path_str;
+        for (const auto& vertex : path) {
+            path_str += vertex + "->";
+        }
+        if (!path_str.empty()) {
+            path_str.pop_back();  // Remove the last arrow
+        }
+        return path_str;
     }
 };
 
-// === Main Function ===
-
 int main() {
-    Graph g(7);
-    vector<string> labels = {"A", "B", "C", "D", "E", "F", "G"};
-    for (int i = 0; i < labels.size(); ++i)
-        g.add_vertex_data(i, labels[i]);
+    Graph g(5);
 
-    g.add_edge(3, 0, 4); // D -> A
-    g.add_edge(3, 4, 2); // D -> E
-    g.add_edge(0, 2, 3); // A -> C
-    g.add_edge(0, 4, 4); // A -> E
-    g.add_edge(4, 2, 4); // E -> C
-    g.add_edge(4, 6, 5); // E -> G
-    g.add_edge(2, 5, 5); // C -> F
-    g.add_edge(2, 1, 2); // C -> B
-    g.add_edge(1, 5, 2); // B -> F
-    g.add_edge(6, 5, 5); // G -> F
+    // Add vertices with labels
+    g.add_vertex_data(0, "A");
+    g.add_vertex_data(1, "B");
+    g.add_vertex_data(2, "C");
+    g.add_vertex_data(3, "D");
+    g.add_vertex_data(4, "E");
 
-    vector<int> distances, previous;
-    g.dijkstra("D", distances, previous);
-    g.print_paths("D", distances, previous);
+    // Add directed edges with weights
+    g.add_edge(3, 0, 4);  // D -> A, weight 4
+    g.add_edge(3, 2, 7);  // D -> C, weight 7
+    g.add_edge(3, 4, 3);  // D -> E, weight 3
+    g.add_edge(0, 2, 4);  // A -> C, weight 4
+    g.add_edge(2, 0, -3); // C -> A, weight -3
+    g.add_edge(0, 4, 5);  // A -> E, weight 5
+    g.add_edge(4, 2, 3);  // E -> C, weight 3
+    g.add_edge(1, 2, -4); // B -> C, weight -4
+    g.add_edge(4, 1, 2);  // E -> B, weight 2
+
+    vector<int> distances, predecessors;
+    auto [negative_cycle, distances_result, predecessors_result] = g.bellman_ford("D", distances, predecessors);
+
+    if (!negative_cycle) {
+        for (int i = 0; i < distances_result.size(); i++) {
+            if (distances_result[i] != numeric_limits<int>::infinity()) {
+                string string_path = g.get_path("D", g.vertex_data[i], predecessors_result);
+                cout << "Shortest path from D to " << g.vertex_data[i] << ": " << string_path << ", Distance: " << distances_result[i] << endl;
+            } else {
+                cout << "No path from D to " << g.vertex_data[i] << ", Distance: Infinity" << endl;
+            }
+        }
+    } else {
+        cout << "Negative weight cycle detected. Cannot compute shortest paths." << endl;
+    }
 
     return 0;
 }
